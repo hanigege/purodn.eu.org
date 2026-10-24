@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Alpine 3.24 生产级 Docker 部署封面</title>
+  <desc id="desc">深色背景上的阿尔卑斯山轮廓、Docker 集装箱与安全盾牌，标题为 Alpine 3.24 生产级 Docker 部署。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.5" stop-color="#0f2b2a"/>
+      <stop offset="1" stop-color="#123055"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#0f2b2a" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e0f2fe" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#e0f2fe" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#22c55e" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- 远景山脊 -->
+  <path d="M0 470 L150 330 L255 410 L395 268 L520 396 L640 300 L760 402 L900 292 L1030 400 L1120 344 L1200 412 L1200 630 L0 630 Z"
+        fill="url(#mountain)"/>
+  <!-- 主峰 + 雪线 -->
+  <path d="M300 500 L470 232 L560 340 L640 262 L820 500 Z" fill="#0e3b3a" opacity="0.75"/>
+  <path d="M470 232 L432 292 L470 280 L500 316 L540 288 L560 340 L520 330 L494 356 L470 330 L446 350 Z" fill="url(#snow)"/>
+
+  <!-- 地面反光 -->
+  <path d="M0 520 C220 486 380 522 560 498 C760 472 940 508 1200 478 L1200 630 L0 630 Z" fill="#22c55e" opacity="0.10"/>
+
+  <!-- Docker 集装箱组 -->
+  <g transform="translate(742 300)" filter="url(#glow)">
+    <g fill="#38bdf8" opacity="0.92">
+      <rect x="0" y="0" width="86" height="62" rx="10"/>
+      <rect x="96" y="0" width="86" height="62" rx="10"/>
+      <rect x="192" y="0" width="86" height="62" rx="10"/>
+      <rect x="48" y="-72" width="86" height="62" rx="10"/>
+      <rect x="144" y="-72" width="86" height="62" rx="10"/>
+      <rect x="96" y="-144" width="86" height="62" rx="10"/>
+    </g>
+    <g fill="#0b1220" opacity="0.55">
+      <rect x="18" y="16" width="50" height="6" rx="3"/>
+      <rect x="18" y="30" width="34" height="6" rx="3"/>
+      <rect x="114" y="16" width="50" height="6" rx="3"/>
+      <rect x="114" y="30" width="34" height="6" rx="3"/>
+      <rect x="210" y="16" width="50" height="6" rx="3"/>
+      <rect x="210" y="30" width="34" height="6" rx="3"/>
+      <rect x="66" y="-56" width="50" height="6" rx="3"/>
+      <rect x="66" y="-42" width="34" height="6" rx="3"/>
+      <rect x="162" y="-56" width="50" height="6" rx="3"/>
+      <rect x="162" y="-42" width="34" height="6" rx="3"/>
+      <rect x="114" y="-128" width="50" height="6" rx="3"/>
+      <rect x="114" y="-114" width="34" height="6" rx="3"/>
+    </g>
+  </g>
+
+  <!-- 安全盾牌 -->
+  <g transform="translate(980 92)">
+    <path d="M60 0 L118 26 V96 C118 140 92 168 60 182 C28 168 2 140 2 96 V26 Z"
+          fill="#0b1220" opacity="0.55" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M34 92 L54 112 L90 72" fill="none" stroke="#22c55e" stroke-width="10"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- 文案 -->
+  <g font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif">
+    <rect x="88" y="96" width="286" height="42" rx="21" fill="#22c55e" opacity="0.16"/>
+    <text x="112" y="124" font-size="19" letter-spacing="3" fill="#86efac">ALPINE LINUX 3.24</text>
+
+    <text x="88" y="222" font-size="64" font-weight="700" fill="#f8fafc">Docker 生产基线</text>
+    <text x="88" y="288" font-size="30" fill="#94e2d5">普通用户 · 安装 → 加固 → 验收</text>
+
+    <rect x="88" y="326" width="88" height="6" rx="3" fill="url(#accent)"/>
+
+    <text x="88" y="392" font-size="22" fill="#cbd5e1">rc-service · daemon.json · cap_drop</text>
+    <text x="88" y="430" font-size="22" fill="#cbd5e1">SSH 仅密钥 · sshguard · 重启验收</text>
+
+    <text x="88" y="558" font-size="18" fill="#64748b">实测：Alpine 3.24.3 / aarch64 / Docker 29.9.2</text>
+  </g>
+</svg>
