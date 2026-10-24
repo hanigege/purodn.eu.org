@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#58a6ff"/>
+      <stop offset="55%" stop-color="#7ee787"/>
+      <stop offset="100%" stop-color="#d2a8ff"/>
+    </linearGradient>
+    <linearGradient id="win" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c2128"/>
+      <stop offset="100%" stop-color="#11151b"/>
+    </linearGradient>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g stroke="#30363d" stroke-width="1" opacity="0.16">
+    <line x1="0" y1="90" x2="1200" y2="90"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="270" x2="1200" y2="270"/>
+    <line x1="0" y1="360" x2="1200" y2="360"/>
+    <line x1="0" y1="450" x2="1200" y2="450"/>
+    <line x1="0" y1="540" x2="1200" y2="540"/>
+    <line x1="150" y1="0" x2="150" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="450" y1="0" x2="450" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="750" y1="0" x2="750" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1050" y1="0" x2="1050" y2="630"/>
+  </g>
+
+  <rect x="0" y="0" width="1200" height="6" fill="url(#bar)"/>
+
+  <!-- title -->
+  <text x="80" y="150" fill="#e6edf3" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="58" font-weight="700">自建 Tabby 配置同步</text>
+  <text x="80" y="210" fill="#8b949e" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="26">Docker 部署 tabby-web · Caddy 自动 HTTPS · GitHub 登录</text>
+
+  <!-- terminal window -->
+  <g filter="url(#soft)">
+    <rect x="80" y="258" width="700" height="300" rx="14" fill="url(#win)" stroke="#30363d" stroke-width="2"/>
+    <rect x="80" y="258" width="700" height="44" rx="14" fill="#21262d"/>
+    <rect x="80" y="290" width="700" height="12" fill="#21262d"/>
+    <circle cx="112" cy="280" r="7" fill="#ff5f56"/>
+    <circle cx="136" cy="280" r="7" fill="#ffbd2e"/>
+    <circle cx="160" cy="280" r="7" fill="#27c93f"/>
+    <text x="196" y="286" fill="#8b949e" font-family="monospace" font-size="15">root@vps: /root/data/docker_data/tabbycloud</text>
+
+    <g font-family="monospace" font-size="17">
+      <text x="108" y="348" fill="#7ee787">$ docker compose up -d</text>
+      <text x="108" y="378" fill="#8b949e">Container tabbycloud  Started</text>
+      <text x="108" y="412" fill="#7ee787">$ /manage.sh add_version 1.0.163</text>
+      <text x="108" y="442" fill="#8b949e">INFO Downloading tabby-core 1.0.163 ...</text>
+      <text x="108" y="472" fill="#8b949e">INFO Downloading tabby-terminal 1.0.163 ...</text>
+      <text x="108" y="506" fill="#58a6ff">Sync host  https://tabby.example.com</text>
+      <text x="108" y="536" fill="#d2a8ff">Bearer  &lt;128 位同步令牌&gt;</text>
+    </g>
+  </g>
+
+  <!-- sync icon -->
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="945" cy="390" r="128" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <path d="M 883 356 A 62 62 0 0 1 1005 356" stroke="#58a6ff" stroke-width="14"/>
+    <path d="M 1005 356 L 1005 318 L 1041 356 Z" fill="#58a6ff" stroke="none"/>
+    <path d="M 1007 424 A 62 62 0 0 1 885 424" stroke="#7ee787" stroke-width="14"/>
+    <path d="M 885 424 L 885 462 L 849 424 Z" fill="#7ee787" stroke="none"/>
+    <circle cx="945" cy="390" r="30" fill="#0d1117" stroke="#d2a8ff" stroke-width="3"/>
+    <path d="M 934 380 L 934 400 L 950 400" stroke="#d2a8ff" stroke-width="3"/>
+    <path d="M 940 372 L 956 390 L 940 408" stroke="#d2a8ff" stroke-width="3"/>
+  </g>
+  <text x="945" y="560" fill="#8b949e" font-family="'Noto Sans CJK SC','PingFang SC',sans-serif" font-size="20" text-anchor="middle">手机 · 电脑 · 公司电脑 配置一致</text>
+</svg>
