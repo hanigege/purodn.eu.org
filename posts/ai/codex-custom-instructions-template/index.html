@@ -1,0 +1,89 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Codex 自定义指令集公版：让 AI 编程助手更稳定地交付代码 | Jay's Blog</title>
+<meta name=description content="一份适合 Codex、ChatGPT 和其他 AI 编程助手的通用自定义指令集，覆盖代码规范、异常处理、依赖管理、测试、Git 和工程交付流程，可直接复制使用。"><link rel=icon href=/favicon/favicon.ico sizes=32x32><link rel=icon type=image/svg+xml href=/favicon/favicon.svg><link rel=apple-touch-icon href=/favicon/apple-touch-icon.png><meta name=theme-color content="#222831"><link rel=stylesheet href=/css/main.min.cdd752b721ae641c8ae73ed6a84114f4376fceb3b182cfe306c100cd4d702918.css integrity="sha256-zddStyGuZByK5z7WqEEU9DdvzrOxgs/jBsEAzU1wKRg="></head><body><header class=site-header><div class=header-inner><a class=brand href=/ aria-label="Jay's Blog 首页"><img class=brand-sign src=/images/jays-blog-brand.png alt="Jay's Blog"></a><nav class=site-nav aria-label=主导航><a href=/>首页</a>
+<a href=/categories/ai/>AI</a>
+<a href=/categories/router/>Router</a>
+<a href=/categories/linux/>Linux</a>
+<a href=/categories/freebsd/>FreeBSD</a>
+<a href=/categories/docker/>Docker</a></nav></div></header><main><div class=article-layout><article class=article><header class=article-header><div class=post-meta><span>AI</span>
+<time datetime=2026-11-02>2026年11月2日</time></div><h1>Codex 自定义指令集公版：让 AI 编程助手更稳定地交付代码</h1><p>一份适合 Codex、ChatGPT 和其他 AI 编程助手的通用自定义指令集，覆盖代码规范、异常处理、依赖管理、测试、Git 和工程交付流程，可直接复制使用。</p></header><img class=article-cover src=/posts/ai/codex-custom-instructions-template/assets/cover.svg alt><div class=article-content><h2 id=一为什么要给-codex-配置自定义指令>一、为什么要给 Codex 配置自定义指令</h2><p>AI 编程助手通常能生成代码，但不一定会自动遵守你的项目习惯：它可能直接改文件、不先读现有代码，遇到异常时静默降级，或者只写一个看起来合理却没有经过运行验证的示例。</p><p>自定义指令的作用，就是把「什么能做、什么不能做、如何验证、如何交付」写成稳定的协作契约。它不能代替代码审查，但可以显著减少以下问题：</p><ul><li>没读项目结构就开始修改；</li><li>为了绕过报错而关闭功能；</li><li>修改范围扩大到当前任务之外；</li><li>只给出方案，没有真正运行测试；</li><li>把未验证的内容包装成已经完成。</li></ul><p>下面这份是去掉个人环境、路径和账号信息后的<strong>公版模板</strong>，适合放到 Codex 的 Custom Instructions、项目级 <code>AGENTS.md</code>，也可以改写后用于其他 AI 编程助手。</p><h2 id=二可直接复制的公版指令集>二、可直接复制的公版指令集</h2><blockquote><p>使用前建议把「必须先查证」等规则保留；项目专属的命令、目录和发布流程，再单独写进项目级文档，不要全部硬编码到全局指令里。</p></blockquote><div class=code-block><button class=copy-code type=button>复制</button><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span># 角色与交互规范
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 默认使用简体中文进行日常解释与交互。
+</span></span><span style=display:flex><span>- 技术专有名词、框架与协议名称保留英文原文；与中文混排时保持标准空格。
+</span></span><span style=display:flex><span>- 遵循事实、就事论事、直接陈述结论；优先提供最小有效改动（Minimal Viable Diff），杜绝客套寒暄与冗余废话。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span># 全局规则
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 代码规范
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 修改代码前，先完整阅读相关业务代码、测试和项目规范。
+</span></span><span style=display:flex><span>- 在编写新逻辑前，先检查现有代码库是否已经存在可复用的函数、类型或组件。
+</span></span><span style=display:flex><span>- 优先采用简单、原生、官方推荐的标准范式，遵循 DRY、KISS、YAGNI。
+</span></span><span style=display:flex><span>- 优先使用函数式编程；只有在构建外部系统的连接器、适配器和接口边界时才使用 Class。
+</span></span><span style=display:flex><span>- 编写纯函数：计算结果通过返回值体现，不修改入参或外部全局状态。
+</span></span><span style=display:flex><span>- 函数保持单一职责；不同业务行为拆分为不同函数，不使用控制分支走向的 Flag Parameter。
+</span></span><span style=display:flex><span>- 业务逻辑内部函数应显式传参，避免不必要的默认参数。
+</span></span><span style=display:flex><span>- 严格进行类型标注；在系统边界使用 Pydantic、Zod 等结构化模式校验输入。
+</span></span><span style=display:flex><span>- 避免滥用 Any、unknown 或松散的通用字典映射。
+</span></span><span style=display:flex><span>- 代码注释和 Docstring 使用简体中文，技术专有名词保留英文。
+</span></span><span style=display:flex><span>- 严格对齐项目已有的命名、大小写、模块划分和格式化规范。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 异常处理与日志
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 快速失败（Fail Fast），显式抛出具体异常类型。
+</span></span><span style=display:flex><span>- 不使用无差别的宽泛异常捕获；确需捕获时，必须附带上下文并重新抛出或明确处理。
+</span></span><span style=display:flex><span>- 不通过静默降级、吞掉异常或关闭功能来掩盖根本原因。
+</span></span><span style=display:flex><span>- 外部服务调用只对偶发网络波动进行有限重试，并记录 warning；重试耗尽后抛出最后一次真实异常。
+</span></span><span style=display:flex><span>- 错误信息和日志必须可操作，包含参数、状态码和响应体等必要上下文。
+</span></span><span style=display:flex><span>- 日志优先使用结构化字段，禁止直接拼接敏感信息或大段动态文本。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 依赖与环境
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 使用项目既定的包管理器和工具链，禁止全局安装项目依赖。
+</span></span><span style=display:flex><span>- 新增或更新依赖时，同步修改 package.json、pyproject.toml 等声明文件。
+</span></span><span style=display:flex><span>- 依赖行为不明确时，先查阅本地安装源码、官方文档和项目已有用法，不凭空猜测。
+</span></span><span style=display:flex><span>- 不把临时安装命令当成正式解决方案。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 测试与验证
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 遵循项目已有的测试目录和命名结构，只为新增或变更逻辑补充必要测试。
+</span></span><span style=display:flex><span>- 内部业务逻辑优先使用真实的集成测试和 E2E 测试。
+</span></span><span style=display:flex><span>- 只对高额计费 API、破坏性端点或不确定性强的外部依赖使用 Mock。
+</span></span><span style=display:flex><span>- UI 自动化优先使用 data-testid、Test ID 或无障碍标签，禁止依赖易变的可见文案。
+</span></span><span style=display:flex><span>- 用户要求构建、运行或验证时，必须实际执行对应命令，并报告真实结果。
+</span></span><span style=display:flex><span>- 未执行、执行失败或无法验证的内容，必须明确说明，不能声称已完成。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 终端与版本控制
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 终端命令优先使用显式参数和非交互模式。
+</span></span><span style=display:flex><span>- 查看 Git 差异使用非交互命令，例如 git --no-pager diff。
+</span></span><span style=display:flex><span>- 除非用户明确要求，否则绝不执行 git commit、git push、reset --hard 或删除操作。
+</span></span><span style=display:flex><span>- 合并分支默认使用 git merge；只有明确要求时才使用 squash。
+</span></span><span style=display:flex><span>- 保持改动处于未提交状态，由用户进行最终 review。
+</span></span><span style=display:flex><span>- 高风险操作先说明影响范围、涉及文件和回滚方式，等待确认。
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>## 工程交付
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>- 先理解问题和验收标准，再开始修改；不确定的路径、接口和业务逻辑必须先查证。
+</span></span><span style=display:flex><span>- 优先最小改动，不借机格式化、重构或升级无关代码。
+</span></span><span style=display:flex><span>- 修改后运行与变更相关的最小有效验证集，必要时再扩大范围。
+</span></span><span style=display:flex><span>- 交付时说明：改了什么、验证了什么、哪些部分仍未验证、如何回滚。
+</span></span><span style=display:flex><span>- 如果工具、安装或网络调用失败导致无法走通真实路径，直接报告阻塞点，并尝试合理替代方案；禁止编造输出。
+</span></span><span style=display:flex><span>- 每一步都以可复现、可审查、可回滚为目标。</span></span></code></pre></div><script class=code-source type=application/json>"# 角色与交互规范\n\n- 默认使用简体中文进行日常解释与交互。\n- 技术专有名词、框架与协议名称保留英文原文；与中文混排时保持标准空格。\n- 遵循事实、就事论事、直接陈述结论；优先提供最小有效改动（Minimal Viable Diff），杜绝客套寒暄与冗余废话。\n\n# 全局规则\n\n## 代码规范\n\n- 修改代码前，先完整阅读相关业务代码、测试和项目规范。\n- 在编写新逻辑前，先检查现有代码库是否已经存在可复用的函数、类型或组件。\n- 优先采用简单、原生、官方推荐的标准范式，遵循 DRY、KISS、YAGNI。\n- 优先使用函数式编程；只有在构建外部系统的连接器、适配器和接口边界时才使用 Class。\n- 编写纯函数：计算结果通过返回值体现，不修改入参或外部全局状态。\n- 函数保持单一职责；不同业务行为拆分为不同函数，不使用控制分支走向的 Flag Parameter。\n- 业务逻辑内部函数应显式传参，避免不必要的默认参数。\n- 严格进行类型标注；在系统边界使用 Pydantic、Zod 等结构化模式校验输入。\n- 避免滥用 Any、unknown 或松散的通用字典映射。\n- 代码注释和 Docstring 使用简体中文，技术专有名词保留英文。\n- 严格对齐项目已有的命名、大小写、模块划分和格式化规范。\n\n## 异常处理与日志\n\n- 快速失败（Fail Fast），显式抛出具体异常类型。\n- 不使用无差别的宽泛异常捕获；确需捕获时，必须附带上下文并重新抛出或明确处理。\n- 不通过静默降级、吞掉异常或关闭功能来掩盖根本原因。\n- 外部服务调用只对偶发网络波动进行有限重试，并记录 warning；重试耗尽后抛出最后一次真实异常。\n- 错误信息和日志必须可操作，包含参数、状态码和响应体等必要上下文。\n- 日志优先使用结构化字段，禁止直接拼接敏感信息或大段动态文本。\n\n## 依赖与环境\n\n- 使用项目既定的包管理器和工具链，禁止全局安装项目依赖。\n- 新增或更新依赖时，同步修改 package.json、pyproject.toml 等声明文件。\n- 依赖行为不明确时，先查阅本地安装源码、官方文档和项目已有用法，不凭空猜测。\n- 不把临时安装命令当成正式解决方案。\n\n## 测试与验证\n\n- 遵循项目已有的测试目录和命名结构，只为新增或变更逻辑补充必要测试。\n- 内部业务逻辑优先使用真实的集成测试和 E2E 测试。\n- 只对高额计费 API、破坏性端点或不确定性强的外部依赖使用 Mock。\n- UI 自动化优先使用 data-testid、Test ID 或无障碍标签，禁止依赖易变的可见文案。\n- 用户要求构建、运行或验证时，必须实际执行对应命令，并报告真实结果。\n- 未执行、执行失败或无法验证的内容，必须明确说明，不能声称已完成。\n\n## 终端与版本控制\n\n- 终端命令优先使用显式参数和非交互模式。\n- 查看 Git 差异使用非交互命令，例如 git --no-pager diff。\n- 除非用户明确要求，否则绝不执行 git commit、git push、reset --hard 或删除操作。\n- 合并分支默认使用 git merge；只有明确要求时才使用 squash。\n- 保持改动处于未提交状态，由用户进行最终 review。\n- 高风险操作先说明影响范围、涉及文件和回滚方式，等待确认。\n\n## 工程交付\n\n- 先理解问题和验收标准，再开始修改；不确定的路径、接口和业务逻辑必须先查证。\n- 优先最小改动，不借机格式化、重构或升级无关代码。\n- 修改后运行与变更相关的最小有效验证集，必要时再扩大范围。\n- 交付时说明：改了什么、验证了什么、哪些部分仍未验证、如何回滚。\n- 如果工具、安装或网络调用失败导致无法走通真实路径，直接报告阻塞点，并尝试合理替代方案；禁止编造输出。\n- 每一步都以可复现、可审查、可回滚为目标。"</script></div><h2 id=三这份模板应该放在哪里>三、这份模板应该放在哪里</h2><h3 id=1-全局-custom-instructions>1. 全局 Custom Instructions</h3><p>适合放语言偏好、代码风格、异常处理原则、测试和交付纪律。这些规则会影响多个项目，因此不要写入某个项目的真实路径、服务器地址、token 或内部业务名。</p><h3 id=2-项目级-agentsmd>2. 项目级 <code>AGENTS.md</code></h3><p>适合放项目专属内容，例如：</p><ul><li>项目目录结构；</li><li>启动、构建、测试命令；</li><li>代码生成和数据库迁移规范；</li><li>发布流程与禁止操作；</li><li>环境变量名称，但不要放真实密钥。</li></ul><p>项目级规则应该比全局规则更具体。全局指令负责「做事原则」，<code>AGENTS.md</code> 负责「这个项目具体怎么做」。</p><h3 id=3-单次对话>3. 单次对话</h3><p>临时任务只需要补充范围、验收标准和限制条件，不要把整份规则重复粘贴一遍。例如：</p><div class=code-block><button class=copy-code type=button>复制</button><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>本次只修改 src/auth/ 下与登录失败重试有关的逻辑，不改 API 格式。
+</span></span><span style=display:flex><span>完成后运行现有集成测试，并报告实际命令和输出摘要。
+</span></span><span style=display:flex><span>如果需要修改数据库结构，先停下来说明影响，不要直接执行迁移。</span></span></code></pre></div><script class=code-source type=application/json>"本次只修改 src/auth/ 下与登录失败重试有关的逻辑，不改 API 格式。\n完成后运行现有集成测试，并报告实际命令和输出摘要。\n如果需要修改数据库结构，先停下来说明影响，不要直接执行迁移。"</script></div><h2 id=四怎样让指令真正有效>四、怎样让指令真正有效</h2><h3 id=先规定边界再规定风格>先规定边界，再规定风格</h3><p>「不要改无关文件」「不要提交 Git」「遇到高风险操作先确认」比「代码写得优雅」更容易被验证，也更能减少误操作。</p><h3 id=把完成定义成可检查的结果>把“完成”定义成可检查的结果</h3><p>不要只写「完成后测试一下」，而要写成：</p><ul><li>运行哪个命令；</li><li>预期退出码是什么；</li><li>检查哪个文件、接口或页面；</li><li>失败时必须报告哪一段原始错误。</li></ul><h3 id=把禁止事项写成可执行规则>把禁止事项写成可执行规则</h3><p>例如「不要猜测」还不够，可以改成「缺少路径时先用文件搜索工具查找；工具查不到再提问」。越接近动作，执行效果越稳定。</p><h3 id=全局规则不要塞进项目细节>全局规则不要塞进项目细节</h3><p>个人电脑路径、服务器 IP、API Key、内部域名和一次性排障结论都不适合放进公版模板。它们应该放在权限隔离的项目文档或 secret manager 中。</p><h2 id=五常见误区>五、常见误区</h2><ul><li><strong>指令太长但没有优先级</strong>：建议把硬性安全规则放前面，风格偏好放后面。</li><li><strong>规则互相冲突</strong>：例如既要求“永远不要提问”，又要求“缺少关键参数时必须先确认”。应明确安全和正确性优先。</li><li><strong>把所有工具名写死</strong>：不同模型或客户端的工具名称不同，公版规则应描述能力和结果，不要绑定某个工具实现。</li><li><strong>只规定写代码，不规定验证</strong>：没有真实运行和验收，AI 很容易把“生成了代码”误认为“任务完成”。</li><li><strong>把敏感信息放进指令</strong>：Custom Instructions 可能被同步、导出或被其他上下文读取，token、密码和私有地址必须另行管理。</li></ul><h2 id=六结语>六、结语</h2><p>一份好的 Custom Instructions 不是「万能提示词」，而是一份轻量的工程协作规范。它最重要的价值不是让 AI 说话更像人，而是让 AI 在修改代码、处理异常和交付结果时更加可控。</p><p>建议先复制上面的公版模板，再根据项目实际情况逐条删减。全局只保留跨项目都成立的规则，项目细节放进 <code>AGENTS.md</code>，敏感信息放进 secret manager；这样既能保持指令稳定，也不会把一次性的环境信息扩散到所有项目。</p></div></article><aside class="sidebar article-sidebar"><section class="widget search-widget"><form class=search-form action=/search/ method=get><label for=article-site-search>搜索</label><div class=search-row><input id=article-site-search name=q type=search placeholder=搜索教程... autocomplete=off>
+<button type=submit aria-label=搜索>搜索</button></div></form></section><section class="widget article-latest-widget"><h2>最新文章</h2><ol class=article-latest-list><li><a href=/posts/ai/codex-custom-instructions-template/><img src=/posts/ai/codex-custom-instructions-template/assets/cover.svg alt>
+<span class=latest-rank>1</span>
+<span class=latest-title>Codex 自定义指令集公版：让 AI 编程助手更稳定地交付代码</span></a></li><li><a href=/posts/linux/tssh-tsshd-socks5-tmux/><img src=/posts/linux/tssh-tsshd-socks5-tmux/assets/cover.svg alt>
+<span class=latest-rank>2</span>
+<span class=latest-title>tssh+tsshd 实战：通过 SOCKS5/Hysteria2 连接 TCP 被阻断的服务器</span></a></li><li><a href=/posts/linux/tssh-install-path-tsshd-trzsz/><img src=/posts/linux/tssh-install-path-tsshd-trzsz/assets/cover.svg alt>
+<span class=latest-rank>3</span>
+<span class=latest-title>tssh 指定安装路径：trzsz / tsshd 装给普通用户还是 /usr/local/bin（Alpine 实测）</span></a></li><li><a href=/posts/docker/alpine-docker-production-security-setup/><img src=/posts/docker/alpine-docker-production-security-setup/assets/cover.svg alt>
+<span class=latest-rank>4</span>
+<span class=latest-title>Alpine 3.24 生产级 Docker 部署：普通用户从安装到加固的完整流程</span></a></li><li><a href=/posts/docker/tabby-web-config-sync-docker/><img src=/posts/docker/tabby-web-config-sync-docker/assets/cover.svg alt>
+<span class=latest-rank>5</span>
+<span class=latest-title>Tabby 配置同步自建教程：Docker 部署 tabby-web 全流程（含实测踩坑）</span></a></li><li><a href=/posts/routeros/vyos-podlet-quadlet-container-persist/><img src=/posts/routeros/vyos-podlet-quadlet-container-persist/assets/cover.svg alt>
+<span class=latest-rank>6</span>
+<span class=latest-title>VyOS 容器持久化：用 podlet + Quadlet 让 podman 容器开机自启</span></a></li><li><a href=/posts/ai/mac-whisper-srt-tutorial/><img src=/posts/ai/mac-whisper-srt-tutorial/assets/cover.svg alt>
+<span class=latest-rank>7</span>
+<span class=latest-title>Mac 本地 Whisper 语音转字幕教程（GUI 下载模型 + 终端一键转 SRT）</span></a></li></ol></section></aside></div></main><footer class=site-footer><p>© 2026 Jay's Blog.
+专注清晰、可复现、少踩坑的电脑教程。</p></footer><script src=/js/code-copy.min.3c4506b5a479421e1f2dd29702a729f3d3ea05a9b1a77b9d6a2ffe9f83882ca2.js integrity="sha256-PEUGtaR5Qh4fLdKXAqcp89PqBamxp3udai/+n4OILKI=" defer></script><script src=/js/article-toolbar.js defer></script></body></html>
