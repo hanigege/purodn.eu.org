@@ -36,42 +36,55 @@ restart_ssh() {
 # 开启密钥模式 (核心逻辑：查缺补漏，防止重复)
 sshkey_on() {
     local conf="/etc/ssh/sshd_config"
-    [ ! -f "${conf}.bak" ] && cp "$conf" "${conf}.bak"
-    
-    # 定义核心配置项
-    configs="
+    local backup="${conf}.bak"
+    local filtered new_config
+    local channel_timeout=""
+    [ -f "$backup" ] || cp -p "$conf" "$backup" || return 1
+    if sshd -T -o ChannelTimeout=session=10m >/dev/null 2>&1; then
+        channel_timeout="ChannelTimeout session=10m"
+    else
+        echo -e "${gl_huang}提示: 当前 OpenSSH 不支持 ChannelTimeout；ClientAlive 仅会断开失联客户端，不会退出仍在线的空闲 shell。${gl_bai}" >&2
+    fi
+    filtered=$(mktemp "${conf}.XXXXXX") || return 1
+    new_config=$(mktemp "${conf}.XXXXXX") || { rm -f "$filtered"; return 1; }
+
+    if ! awk 'function upper(value) { return toupper(value) }
+        upper($1) ~ /^(PERMITROOTLOGIN|PASSWORDAUTHENTICATION|PUBKEYAUTHENTICATION|CHALLENGERESPONSEAUTHENTICATION|KBDINTERACTIVEAUTHENTICATION|USEPAM|ALLOWTCPFORWARDING|ALLOWAGENTFORWARDING|X11FORWARDING|CLIENTALIVEINTERVAL|CLIENTALIVECOUNTMAX|CHANNELTIMEOUT)$/ { next }
+        { print }' "$conf" > "$filtered"; then
+        rm -f "$filtered" "$new_config"
+        return 1
+    fi
+
+    {
+        cat <<'EOF'
 PermitRootLogin prohibit-password
 PasswordAuthentication no
 PubkeyAuthentication yes
 ChallengeResponseAuthentication no
 KbdInteractiveAuthentication no
 UsePAM no
-"
+AllowTcpForwarding no
+AllowAgentForwarding no
+X11Forwarding no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF
+    } > "$new_config" || { rm -f "$filtered" "$new_config"; return 1; }
+    [ -z "$channel_timeout" ] || printf '%s\n' "$channel_timeout" >> "$new_config"
+    cat "$filtered" >> "$new_config" || { rm -f "$filtered" "$new_config"; return 1; }
+    chmod 600 "$new_config"
+    chown root:root "$new_config"
+    mv -f "$new_config" "$conf" || { rm -f "$filtered"; return 1; }
+    rm -f "$filtered"
 
-    # 1. 尝试修改已有项（包含被注释的行）
-    echo "$configs" | while read -r line; do
-        [ -z "$line" ] && continue
-        key=$(echo "$line" | awk '{print $1}')
-        val=$(echo "$line" | awk '{print $2}')
-        # 匹配任何以该 key 开头的行（无论前面是否有 # 或空格）并替换
-        sed -i "s|^\s*#\?\s*$key\s.*|$key $val|g" "$conf"
-    done
-
-    # 2. 查缺补漏：如果文件中完全没出现过该 key，则追加
-    echo "$configs" | while read -r line; do
-        [ -z "$line" ] && continue
-        key=$(echo "$line" | awk '{print $1}')
-        if ! grep -qi "^\s*$key\s" "$conf"; then
-            echo "$line" >> "$conf"
-        fi
-    done
-
-    # 3. 处理 Alpine 特有配置：注释掉 Include 指令，清理子配置
-    sed -i 's/^Include /#Include /g' "$conf"
-    [ -d /etc/ssh/sshd_config.d ] && rm -f /etc/ssh/sshd_config.d/*
+    if ! sshd -t -f "$conf"; then
+        cp -p "$backup" "$conf"
+        echo -e "${gl_hong}sshd 配置校验失败，已恢复备份。${gl_bai}" >&2
+        return 1
+    fi
     
     restart_ssh
-    echo -e "${gl_lv}SSH 安全配置已查缺补漏并强制刷新，密钥模式已生效${gl_bai}"
+    echo -e "${gl_lv}已启用密钥登录并关闭密码、键盘交互及 SSH 转发；支持时，session 空闲 10 分钟后断开。${gl_bai}"
     sleep 2
 }
 
