@@ -24,10 +24,31 @@ add chain=dstnat protocol=tcp dst-port=21 action=dst-nat to-addresses=10.20.20.x
 add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=tcp dst-port=12340 action=masquerade comment=&#34;Hairpin DERP TCP&#34;
 add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=udp dst-port=3478 action=masquerade comment=&#34;Hairpin DERP STUN&#34;
 # 给 Web 服务添加回流 (假设内网 IP 为 10.20.20.5)
-add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.5 protocol=tcp dst-port=12335 action=masquerade comment=&#34;Hairpin Web&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat\n# --- 基础规则 ---\n# 1. 核心上网伪装（必须限制在 WAN 口，防止干扰其他转发）\nadd chain=srcnat action=masquerade out-interface=pppoe-out1 comment=\"Standard Internet Access\"\n# --- 端口转发 (DST-NAT) ---\n# 2. DERP 转发\nadd chain=dstnat protocol=tcp dst-port=12340 action=dst-nat to-addresses=10.20.20.4 to-ports=12340 comment=\"DERP TCP\"\nadd chain=dstnat protocol=udp dst-port=3478 action=dst-nat to-addresses=10.20.20.4 to-ports=3478 comment=\"DERP STUN\"\n# 3. Web 服务转发 (示例)\nadd chain=dstnat protocol=tcp dst-port=12335 action=dst-nat to-addresses=10.20.20.x to-ports=12335 comment=\"web\"\n# 4. FTP 服务转发 (示例)\nadd chain=dstnat protocol=tcp dst-port=21 action=dst-nat to-addresses=10.20.20.x to-ports=21 comment=\"vsftpd\"\n# --- 回流规则 (Hairpin NAT) ---\n# 只有当内网访问内网服务器时才触发。建议将所有内网服务器放在一个规则里，或者逐个添加。\n# 给 DERP 添加回流\nadd chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=tcp dst-port=12340 action=masquerade comment=\"Hairpin DERP TCP\"\nadd chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=udp dst-port=3478 action=masquerade comment=\"Hairpin DERP STUN\"\n# 给 Web 服务添加回流 (假设内网 IP 为 10.20.20.5)\nadd chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.5 protocol=tcp dst-port=12335 action=masquerade comment=\"Hairpin Web\""</script></div><h3 id=3-操作建议使用地址列表简化回流>3. 操作建议：使用“地址列表”简化回流</h3><p>在 NAT 中添加回流规则前，先替换源网段、目标服务器及 LAN 接口名称。RouterOS 7.25.1 的 <code>/ip firewall nat</code> 不接受 <code>connection-nat-state</code> 参数，不能把 filter 链的该匹配器直接用于 NAT。以下回流规则通过源网段、目标服务器和 <code>out-interface=bridge1</code> 限定范围；同一 bridge 内纯二层转发的普通直连流量不经过这些 IP NAT 规则。</p><p>如果你有很多内网服务器需要回流，一条条加 srcnat 很麻烦。你可以这样做：</p><p>在 IP -> Firewall -> Address Lists 里，把所有内网服务器 IP 加到一个叫 Internal_Servers 的列表。</p><ol><li>操作步骤</li></ol><p>请在 WinBox 中按照以下两步配置：</p><p>第一步：建立服务器地址列表</p><p>在 IP -> Firewall -> Address Lists 中，将你所有需要从内网访问的服务器 IP 加入列表：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>Name: Internal_Servers | Address: 10.20.20.4 (DERP 服务器)
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.5 protocol=tcp dst-port=12335 action=masquerade comment=&#34;Hairpin Web&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat
+# --- 基础规则 ---
+# 1. 核心上网伪装（必须限制在 WAN 口，防止干扰其他转发）
+add chain=srcnat action=masquerade out-interface=pppoe-out1 comment=\"Standard Internet Access\"
+# --- 端口转发 (DST-NAT) ---
+# 2. DERP 转发
+add chain=dstnat protocol=tcp dst-port=12340 action=dst-nat to-addresses=10.20.20.4 to-ports=12340 comment=\"DERP TCP\"
+add chain=dstnat protocol=udp dst-port=3478 action=dst-nat to-addresses=10.20.20.4 to-ports=3478 comment=\"DERP STUN\"
+# 3. Web 服务转发 (示例)
+add chain=dstnat protocol=tcp dst-port=12335 action=dst-nat to-addresses=10.20.20.x to-ports=12335 comment=\"web\"
+# 4. FTP 服务转发 (示例)
+add chain=dstnat protocol=tcp dst-port=21 action=dst-nat to-addresses=10.20.20.x to-ports=21 comment=\"vsftpd\"
+# --- 回流规则 (Hairpin NAT) ---
+# 只有当内网访问内网服务器时才触发。建议将所有内网服务器放在一个规则里，或者逐个添加。
+# 给 DERP 添加回流
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=tcp dst-port=12340 action=masquerade comment=\"Hairpin DERP TCP\"
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.4 protocol=udp dst-port=3478 action=masquerade comment=\"Hairpin DERP STUN\"
+# 给 Web 服务添加回流 (假设内网 IP 为 10.20.20.5)
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address=10.20.20.5 protocol=tcp dst-port=12335 action=masquerade comment=\"Hairpin Web\""</script></div><h3 id=3-操作建议使用地址列表简化回流>3. 操作建议：使用“地址列表”简化回流</h3><p>在 NAT 中添加回流规则前，先替换源网段、目标服务器及 LAN 接口名称。RouterOS 7.25.1 的 <code>/ip firewall nat</code> 不接受 <code>connection-nat-state</code> 参数，不能把 filter 链的该匹配器直接用于 NAT。以下回流规则通过源网段、目标服务器和 <code>out-interface=bridge1</code> 限定范围；同一 bridge 内纯二层转发的普通直连流量不经过这些 IP NAT 规则。</p><p>如果你有很多内网服务器需要回流，一条条加 srcnat 很麻烦。你可以这样做：</p><p>在 IP -> Firewall -> Address Lists 里，把所有内网服务器 IP 加到一个叫 Internal_Servers 的列表。</p><ol><li>操作步骤</li></ol><p>请在 WinBox 中按照以下两步配置：</p><p>第一步：建立服务器地址列表</p><p>在 IP -> Firewall -> Address Lists 中，将你所有需要从内网访问的服务器 IP 加入列表：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>Name: Internal_Servers | Address: 10.20.20.4 (DERP 服务器)
 Name: Internal_Servers | Address: 10.20.20.5 (Web 服务器)
-(依此类推，将所有有端口转发需求的内网 IP 都加进去)</code></pre><script class=code-source type=application/json>"Name: Internal_Servers | Address: 10.20.20.4 (DERP 服务器)\nName: Internal_Servers | Address: 10.20.20.5 (Web 服务器)\n(依此类推，将所有有端口转发需求的内网 IP 都加进去)"</script></div><p>第二步：添加全局回流规则</p><h4 id=在-ip---firewall---nat-中添加这一条确保它在所有-dst-nat-规则之后但在基础-masquerade-规则之前或者紧随其后>在 IP -> Firewall -> NAT 中添加这一条（确保它在所有 dst-nat 规则之后，但在基础 masquerade 规则之前，或者紧随其后）：</h4><p>代码段</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall nat
-add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address-list=Internal_Servers action=masquerade comment=&#34;Global Hairpin NAT&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat\nadd chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address-list=Internal_Servers action=masquerade comment=\"Global Hairpin NAT\""</script></div><p>使用 Address List（地址列表） 的方式最为高效，不需要在 NAT 规则里指定端口。</p><p>当请求的目标地址匹配列表中的 IP 时，RouterOS 会自动对所有协议（TCP/UDP/ICMP 等）和所有端口执行回流操作。</p><h3 id=规则排序-例>规则排序 例：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall nat
+(依此类推，将所有有端口转发需求的内网 IP 都加进去)</code></pre><script class=code-source type=application/json>"Name: Internal_Servers | Address: 10.20.20.4 (DERP 服务器)
+Name: Internal_Servers | Address: 10.20.20.5 (Web 服务器)
+(依此类推，将所有有端口转发需求的内网 IP 都加进去)"</script></div><p>第二步：添加全局回流规则</p><h4 id=在-ip---firewall---nat-中添加这一条确保它在所有-dst-nat-规则之后但在基础-masquerade-规则之前或者紧随其后>在 IP -> Firewall -> NAT 中添加这一条（确保它在所有 dst-nat 规则之后，但在基础 masquerade 规则之前，或者紧随其后）：</h4><p>代码段</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall nat
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address-list=Internal_Servers action=masquerade comment=&#34;Global Hairpin NAT&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat
+add chain=srcnat out-interface=bridge1 src-address=10.20.20.0/24 dst-address-list=Internal_Servers action=masquerade comment=\"Global Hairpin NAT\""</script></div><p>使用 Address List（地址列表） 的方式最为高效，不需要在 NAT 规则里指定端口。</p><p>当请求的目标地址匹配列表中的 IP 时，RouterOS 会自动对所有协议（TCP/UDP/ICMP 等）和所有端口执行回流操作。</p><h3 id=规则排序-例>规则排序 例：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall nat
 # ====================
 # 第一部分：端口映射 (DSTNAT - 外部访问内网)
 # ====================
@@ -41,10 +62,27 @@ add chain=dstnat action=dst-nat dst-port=80,443 in-interface-list=WAN protocol=t
 add chain=srcnat out-interface=bridge1 action=masquerade src-address=10.20.20.0/24 dst-address-list=Internal_Servers comment=&#34;Global Hairpin NAT&#34;
 # 2. 全局上网伪装 (全局兜底，必须放在 srcnat 链的最底部)
 # 作用：所有从 WAN 列表物理或虚拟接口发出的流量，全部转换并伪装为路由器的公网 IP
-add chain=srcnat action=masquerade out-interface-list=WAN comment=&#34;Global Internet Masquerade&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat\n# ====================\n# 第一部分：端口映射 (DSTNAT - 外部访问内网)\n# ====================\n# 将外部网络 (WAN 列表) 对 80/443 端口的访问，转发给内网服务器 (以你的 10.20.20.10 为例)\nadd chain=dstnat action=dst-nat dst-port=80,443 in-interface-list=WAN protocol=tcp to-addresses=10.20.20.10 comment=\"Web Server Port Forward from WAN\"\n# ====================\n# 第二部分：源地址伪装 (SRCNAT - 内网访问外部)\n# ====================\n# 1. Hairpin NAT (内网回流，必须放在全局伪装之前)\n# 作用：确保内网设备通过公网域名访问内网服务器时，数据包能在路由器内部正确折返\nadd chain=srcnat out-interface=bridge1 action=masquerade src-address=10.20.20.0/24 dst-address-list=Internal_Servers comment=\"Global Hairpin NAT\"\n# 2. 全局上网伪装 (全局兜底，必须放在 srcnat 链的最底部)\n# 作用：所有从 WAN 列表物理或虚拟接口发出的流量，全部转换并伪装为路由器的公网 IP\nadd chain=srcnat action=masquerade out-interface-list=WAN comment=\"Global Internet Masquerade\""</script></div><p>以上是可按需裁剪的示例规则。导入前必须替换接口、网段和旁路由地址，并按现有配置核对规则顺序；不要把示例直接整段粘贴到正在运行的生产路由器。</p><h3 id=4-验证-web-服务>4. 验证 Web 服务</h3><p>外网测试：手机关 Wi-Fi，访问域名，确认 Web 正常。</p><p>内网测试：手机连 Wi-Fi，访问同一个域名。如果能打开，说明回流配置成功。</p><h3 id=5-配套的防火墙规则也是我自用的>5. 配套的防火墙规则，也是我自用的</h3><h3 id=特别强调如果使用了小包优先规则配置必须停用下面所有配置中的fasttrack-connection-规则><code>特别强调：如果使用了小包优先规则配置，必须停用下面所有配置中的fasttrack-connection 规则</code></h3><p>常见 RouterOS 默认防火墙模板会加入 FastTrack 规则。FastTrack 数据包会绕过部分 Mangle、Queue Tree 等处理；如果依赖这些功能做 QoS 或策略路由，应为相关流量排除 FastTrack。FastTrack 是快速转发路径，不等同于硬件转发卸载。</p><h3 id=ipv4防火墙配置>ipv4防火墙配置</h3><h3 id=变更前备份并核对现有防火墙>变更前备份并核对现有防火墙</h3><p>不要执行 <code>remove [find dynamic=no]</code> 批量删除规则：它会删除所有静态 IPv4/IPv6 filter 规则，其中可能包含当前有效的管理访问、隔离和防护规则。先备份配置并查看现有规则；在已有路由器上应按规则逐条核对、定点调整。若整段导入规则，先启用 Safe Mode，并确认接口列表与管理入口后再操作。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/system backup save name=before-firewall-change
+add chain=srcnat action=masquerade out-interface-list=WAN comment=&#34;Global Internet Masquerade&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat
+# ====================
+# 第一部分：端口映射 (DSTNAT - 外部访问内网)
+# ====================
+# 将外部网络 (WAN 列表) 对 80/443 端口的访问，转发给内网服务器 (以你的 10.20.20.10 为例)
+add chain=dstnat action=dst-nat dst-port=80,443 in-interface-list=WAN protocol=tcp to-addresses=10.20.20.10 comment=\"Web Server Port Forward from WAN\"
+# ====================
+# 第二部分：源地址伪装 (SRCNAT - 内网访问外部)
+# ====================
+# 1. Hairpin NAT (内网回流，必须放在全局伪装之前)
+# 作用：确保内网设备通过公网域名访问内网服务器时，数据包能在路由器内部正确折返
+add chain=srcnat out-interface=bridge1 action=masquerade src-address=10.20.20.0/24 dst-address-list=Internal_Servers comment=\"Global Hairpin NAT\"
+# 2. 全局上网伪装 (全局兜底，必须放在 srcnat 链的最底部)
+# 作用：所有从 WAN 列表物理或虚拟接口发出的流量，全部转换并伪装为路由器的公网 IP
+add chain=srcnat action=masquerade out-interface-list=WAN comment=\"Global Internet Masquerade\""</script></div><p>以上是可按需裁剪的示例规则。导入前必须替换接口、网段和旁路由地址，并按现有配置核对规则顺序；不要把示例直接整段粘贴到正在运行的生产路由器。</p><h3 id=4-验证-web-服务>4. 验证 Web 服务</h3><p>外网测试：手机关 Wi-Fi，访问域名，确认 Web 正常。</p><p>内网测试：手机连 Wi-Fi，访问同一个域名。如果能打开，说明回流配置成功。</p><h3 id=5-配套的防火墙规则也是我自用的>5. 配套的防火墙规则，也是我自用的</h3><h3 id=特别强调如果使用了小包优先规则配置必须停用下面所有配置中的fasttrack-connection-规则><code>特别强调：如果使用了小包优先规则配置，必须停用下面所有配置中的fasttrack-connection 规则</code></h3><p>常见 RouterOS 默认防火墙模板会加入 FastTrack 规则。FastTrack 数据包会绕过部分 Mangle、Queue Tree 等处理；如果依赖这些功能做 QoS 或策略路由，应为相关流量排除 FastTrack。FastTrack 是快速转发路径，不等同于硬件转发卸载。</p><h3 id=ipv4防火墙配置>ipv4防火墙配置</h3><h3 id=变更前备份并核对现有防火墙>变更前备份并核对现有防火墙</h3><p>不要执行 <code>remove [find dynamic=no]</code> 批量删除规则：它会删除所有静态 IPv4/IPv6 filter 规则，其中可能包含当前有效的管理访问、隔离和防护规则。先备份配置并查看现有规则；在已有路由器上应按规则逐条核对、定点调整。若整段导入规则，先启用 Safe Mode，并确认接口列表与管理入口后再操作。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/system backup save name=before-firewall-change
 /export file=before-firewall-change
 /ip firewall filter print detail
-/ipv6 firewall filter print detail</code></pre><script class=code-source type=application/json>"/system backup save name=before-firewall-change\n/export file=before-firewall-change\n/ip firewall filter print detail\n/ipv6 firewall filter print detail"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb>带添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
+/ipv6 firewall filter print detail</code></pre><script class=code-source type=application/json>"/system backup save name=before-firewall-change
+/export file=before-firewall-change
+/ip firewall filter print detail
+/ipv6 firewall filter print detail"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb>带添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
 # ====================
@@ -66,12 +104,43 @@ add action=accept chain=forward comment=&#34;2. Skip FastTrack for sing-box in&#
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 3. 基础状态放行
 add action=accept chain=forward comment=&#34;4. Accept established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 comment=&#34;放行经旁路由的 IPv4 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 内网正常转发与端口映射放行
 add action=accept chain=forward comment=&#34;6. Allow bridge1 forward (Internal Outbound)&#34; in-interface=bridge1
 add action=accept chain=forward comment=&#34;7. Allow DSTNAT (Port Forwarding)&#34; connection-nat-state=dstnat in-interface=pppoe-out1
 # 5. 全局兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter\n# ====================\n# 入站链 (INPUT) - 访问路由器本身\n# ====================\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1\n# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。\n# WAN口丢弃与兜底\nadd action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp\nadd action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1\nadd action=drop chain=input comment=\"10. Drop all remaining input\"\n# ====================\n# 转发链 (FORWARD) - 穿过路由器 (外网内网)\n# ====================\n# 1. 旁路由有效连接豁免（放在 FastTrack 之前；新连接仍由后续规则检查）\nadd action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=10.20.20.6 connection-state=established,related,untracked\nadd action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=10.20.20.6 connection-state=established,related,untracked\n# 2. FastTrack 加速（处理正常直连流量）\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 3. 基础状态放行\nadd action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 内网正常转发与端口映射放行\nadd action=accept chain=forward comment=\"6. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1\nadd action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface=pppoe-out1\n# 5. 全局兜底拦截 (零信任原则)\nadd action=drop chain=forward comment=\"8. Drop all other forward\""</script></div><h4 id=转发链-forward特别说明>转发链 (FORWARD)特别说明：</h4><p><strong>FORWARD链</strong>“旁路由豁免”填入你的<code>mos+sb的ip</code>
+add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter
+# ====================
+# 入站链 (INPUT) - 访问路由器本身
+# ====================
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
+# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
+# WAN口丢弃与兜底
+add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp
+add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1
+add action=drop chain=input comment=\"10. Drop all remaining input\"
+# ====================
+# 转发链 (FORWARD) - 穿过路由器 (外网内网)
+# ====================
+# 1. 旁路由有效连接豁免（放在 FastTrack 之前；新连接仍由后续规则检查）
+add action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=10.20.20.6 connection-state=established,related,untracked
+add action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=10.20.20.6 connection-state=established,related,untracked
+# 2. FastTrack 加速（处理正常直连流量）
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 3. 基础状态放行
+add action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 comment=\"放行经旁路由的 IPv4 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 内网正常转发与端口映射放行
+add action=accept chain=forward comment=\"6. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1
+add action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface=pppoe-out1
+# 5. 全局兜底拦截 (零信任原则)
+add action=drop chain=forward comment=\"8. Drop all other forward\""</script></div><h4 id=转发链-forward特别说明>转发链 (FORWARD)特别说明：</h4><p><strong>FORWARD链</strong>“旁路由豁免”填入你的<code>mos+sb的ip</code>
 <strong>INPUT 链</strong>默认不开放 WAN 管理入口；确需远程管理时，只允许固定可信公网源地址，并把放行规则放在 WAN 丢弃规则之前。</p><h3 id=不添加旁路由ip规则版>不添加旁路由ip规则版：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
@@ -92,12 +161,41 @@ add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; con
 # 2. 基础状态放行
 add action=accept chain=forward comment=&#34;4. Accept established,related,untracked&#34; connection-state=established,related,untracked
 # 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 comment=&#34;放行经旁路由的 IPv4 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 内网正常转发与端口映射放行
 add action=accept chain=forward comment=&#34;6. Allow bridge1 forward (Internal Outbound)&#34; in-interface=bridge1
 add action=accept chain=forward comment=&#34;7. Allow DSTNAT (Port Forwarding)&#34; connection-nat-state=dstnat in-interface=pppoe-out1
 # 5. 全局兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter\n# ====================\n# 入站链 (INPUT) - 访问路由器本身\n# ====================\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1\n# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。\n# WAN口丢弃与兜底\nadd action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp\nadd action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1\nadd action=drop chain=input comment=\"10. Drop all remaining input\"\n# ====================\n# 转发链 (FORWARD) - 穿过路由器 (外网内网)\n# ====================\n# 1. FastTrack 加速（处理正常直连流量）\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 2. 基础状态放行\nadd action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked\n# 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 内网正常转发与端口映射放行\nadd action=accept chain=forward comment=\"6. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1\nadd action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface=pppoe-out1\n# 5. 全局兜底拦截 (零信任原则)\nadd action=drop chain=forward comment=\"8. Drop all other forward\""</script></div><h4 id=转发链-forward特别说明-1>转发链 (FORWARD)特别说明：</h4><p><strong>第5条</strong>“DST-NAT"规则：在 IPv4 的 Forward 链中，我加入了一条 connection-nat-state=dstnat。这确保了你在 IP -> Firewall -> NAT 中做的端口映射能够穿透 forward 的兜底 drop 规则。
+add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter
+# ====================
+# 入站链 (INPUT) - 访问路由器本身
+# ====================
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
+# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
+# WAN口丢弃与兜底
+add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp
+add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1
+add action=drop chain=input comment=\"10. Drop all remaining input\"
+# ====================
+# 转发链 (FORWARD) - 穿过路由器 (外网内网)
+# ====================
+# 1. FastTrack 加速（处理正常直连流量）
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 2. 基础状态放行
+add action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked
+# 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 comment=\"放行经旁路由的 IPv4 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 内网正常转发与端口映射放行
+add action=accept chain=forward comment=\"6. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1
+add action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface=pppoe-out1
+# 5. 全局兜底拦截 (零信任原则)
+add action=drop chain=forward comment=\"8. Drop all other forward\""</script></div><h4 id=转发链-forward特别说明-1>转发链 (FORWARD)特别说明：</h4><p><strong>第5条</strong>“DST-NAT"规则：在 IPv4 的 Forward 链中，我加入了一条 connection-nat-state=dstnat。这确保了你在 IP -> Firewall -> NAT 中做的端口映射能够穿透 forward 的兜底 drop 规则。
 内网互通：只要数据包进入 bridge1 接口，就会被 Allow bridge1 forward 捕获并放行，不会受到最后一条 drop 的影响。
 这样配置后，局域网直连流量可使用 FastTrack 快速转发；sing-box 相关连接由前置规则排除 FastTrack，以免绕过所需的策略处理。</p><h3 id=ipv6防火墙配置>ipv6防火墙配置</h3><h3 id=添加旁路由ip规则版-mosdnssb>添加旁路由ip规则版 (mosdns+sb)</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 firewall filter
 # ====================
@@ -119,6 +217,8 @@ add action=accept chain=forward comment=&#34;2. Skip FastTrack for sing-box in&#
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 3. 基础状态放行
 add action=accept chain=forward comment=&#34;4. Accept forward established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 comment=&#34;放行经旁路由的 IPv6 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 核心协议与内网放行
 add action=accept chain=forward comment=&#34;6. Accept Forward ICMPv6&#34; protocol=icmpv6
@@ -128,7 +228,38 @@ add action=accept chain=forward comment=&#34;8. Allow NPM (HTTP/HTTPS)&#34; disa
 add action=accept chain=forward comment=&#34;9. Allow Hysteria2/Proxy&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
 add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
 # 5. 兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter\n# ====================\n# 入站链 (INPUT) - 保护路由器本体\n# ====================\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6\nadd action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface=pppoe-out1 protocol=udp src-address=fe80::/10\nadd action=accept chain=input comment=\"5. Allow bridge1 (Internal Admin)\" in-interface=bridge1\nadd action=drop chain=input comment=\"6. Drop all not from bridge1\" in-interface=!bridge1\n# ====================\n# 转发链 (FORWARD) - 穿过路由器 (外网内网)\n# ====================\n# 1. 旁路由有效连接豁免（放在 FastTrack 之前；新连接仍由后续规则检查）\nadd action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=fd88::6666 connection-state=established,related,untracked\nadd action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=fd88::6666 connection-state=established,related,untracked\n# 2. FastTrack 加速（处理正常 IPv6 直连流量）\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 3. 基础状态放行\nadd action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 核心协议与内网放行\nadd action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6\nadd action=accept chain=forward comment=\"7. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1\n# --- 暴露内网服务 (注意：替换为实际公网 IPv6 地址后再按需启用) ---\nadd action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp\nadd action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp\nadd action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp\n# 5. 兜底拦截 (零信任原则)\nadd action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><p><strong>关键提醒：</strong>
+add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter
+# ====================
+# 入站链 (INPUT) - 保护路由器本体
+# ====================
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6
+add action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface=pppoe-out1 protocol=udp src-address=fe80::/10
+add action=accept chain=input comment=\"5. Allow bridge1 (Internal Admin)\" in-interface=bridge1
+add action=drop chain=input comment=\"6. Drop all not from bridge1\" in-interface=!bridge1
+# ====================
+# 转发链 (FORWARD) - 穿过路由器 (外网内网)
+# ====================
+# 1. 旁路由有效连接豁免（放在 FastTrack 之前；新连接仍由后续规则检查）
+add action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=fd88::6666 connection-state=established,related,untracked
+add action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=fd88::6666 connection-state=established,related,untracked
+# 2. FastTrack 加速（处理正常 IPv6 直连流量）
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 3. 基础状态放行
+add action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 comment=\"放行经旁路由的 IPv6 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 核心协议与内网放行
+add action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6
+add action=accept chain=forward comment=\"7. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1
+# --- 暴露内网服务 (注意：替换为实际公网 IPv6 地址后再按需启用) ---
+add action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp
+add action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
+add action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
+# 5. 兜底拦截 (零信任原则)
+add action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><p><strong>关键提醒：</strong>
 修改旁路由的ip为你的ipv6地址
 如果你的宽带是动态 IPv6 前缀（PD），服务器的完整 IPv6 地址会变化。这种情况下，不应直接写死 dst-address，而是需要结合 MikroTik 的 IPv6 Firewall Address Lists 功能，或者使用 in-interface=pppoe-out1 配合 out-interface=bridge1 加上特定设备的特定匹配规则（比如通过防火墙脚本动态更新）。</p><p>IPv4 依靠 NAT，不主动映射外部进不来；但 IPv6 是端到端直通（没有 NAT）。
 你在 forward 链中放行 dst-port=80,443，却没有指定目标地址 (dst-address)。一旦启用，这代表公网可以访问你局域网内所有设备的 80 和 443 端口（包括光猫、路由器后台、智能家居、其他电脑等）。</p><p>正确做法：必须严格绑定目标服务器的 IPv6 地址（dst-address=服务器IPv6地址），或者通过 MAC 地址自动获取到的 IPv6 后缀。</p><h4 id=不添加旁路由ip规则版-mosdnssb>不添加旁路由ip规则版 (mosdns+sb)：</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 firewall filter
@@ -149,6 +280,8 @@ add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; con
 # 2. 基础状态放行
 add action=accept chain=forward comment=&#34;4. Accept forward established,related,untracked&#34; connection-state=established,related,untracked
 # 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 comment=&#34;放行经旁路由的 IPv6 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 核心协议与内网放行
 add action=accept chain=forward comment=&#34;6. Accept Forward ICMPv6&#34; protocol=icmpv6
@@ -158,11 +291,52 @@ add action=accept chain=forward comment=&#34;8. Allow NPM (HTTP/HTTPS)&#34; disa
 add action=accept chain=forward comment=&#34;9. Allow Hysteria2/Proxy&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
 add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
 # 5. 兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter\n# ====================\n# 入站链 (INPUT) - 保护路由器本体\n# ====================\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6\nadd action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface=pppoe-out1 protocol=udp src-address=fe80::/10\nadd action=accept chain=input comment=\"5. Allow bridge1 (Internal Admin)\" in-interface=bridge1\nadd action=drop chain=input comment=\"6. Drop all not from bridge1\" in-interface=!bridge1\n# ====================\n# 转发链 (FORWARD) - 穿过路由器 (外网内网)\n# ====================\n# 1. FastTrack 加速（处理正常 IPv6 直连流量）\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 2. 基础状态放行\nadd action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked\n# 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 核心协议与内网放行\nadd action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6\nadd action=accept chain=forward comment=\"7. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1\n# --- 暴露内网服务 (注意：替换为实际公网 IPv6 地址后再按需启用) ---\nadd action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp\nadd action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp\nadd action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp\n# 5. 兜底拦截 (零信任原则)\nadd action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=旁路由环境下的-forward-invalid-处理>旁路由环境下的 <code>FORWARD</code> invalid 处理</h3><p>RouterOS 官方建议在 <code>input</code> 和 <code>forward</code> 链丢弃 <code>connection-state=invalid</code> 数据包，因此上面的防火墙示例保留了这条规则。某些非对称路由、策略路由或特殊 UDP 流量，可能让连接跟踪把特定数据包标记为 <code>invalid</code>；这需要结合实际路径和规则计数器诊断，不能仅凭应用超时就认定原因。</p><p>先查看 invalid 规则计数器是否增长，并结合连接跟踪、路由和抓包定位具体流量：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter print stats where chain=forward and connection-state=invalid
-/ipv6 firewall filter print stats where chain=forward and connection-state=invalid</code></pre><script class=code-source type=application/json>"/ip firewall filter print stats where chain=forward and connection-state=invalid\n/ipv6 firewall filter print stats where chain=forward and connection-state=invalid"</script></div><p>不要一开始就全局禁用或删除 <code>FORWARD</code> 的 invalid 丢弃规则。若已确认某个固定 LAN 主机、协议和端口产生了必须放行的非对称流量，可以在 invalid 丢弃规则之前添加范围尽可能窄的临时例外；测试结束后再确认是否需要长期保留。不要对所有来源、所有协议放行 invalid 流量。</p><h3 id=结束>结束！</h3><h3 id=如创建了interface-list防火墙的配置方案><code>如创建了interface list，防火墙的配置方案：</code></h3><h4 id=1-创建列表名称>1. 创建列表名称</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface list
+add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter
+# ====================
+# 入站链 (INPUT) - 保护路由器本体
+# ====================
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6
+add action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface=pppoe-out1 protocol=udp src-address=fe80::/10
+add action=accept chain=input comment=\"5. Allow bridge1 (Internal Admin)\" in-interface=bridge1
+add action=drop chain=input comment=\"6. Drop all not from bridge1\" in-interface=!bridge1
+# ====================
+# 转发链 (FORWARD) - 穿过路由器 (外网内网)
+# ====================
+# 1. FastTrack 加速（处理正常 IPv6 直连流量）
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 2. 基础状态放行
+add action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked
+# 丢弃无法归属到有效连接的转发包；如有例外需求，先按上文诊断。
+# 策略路由 FakeIP invalid 例外：仅放行经 bridge1 转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 comment=\"放行经旁路由的 IPv6 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 核心协议与内网放行
+add action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6
+add action=accept chain=forward comment=\"7. Allow bridge1 forward (Internal Outbound)\" in-interface=bridge1
+# --- 暴露内网服务 (注意：替换为实际公网 IPv6 地址后再按需启用) ---
+add action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp
+add action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
+add action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
+# 5. 兜底拦截 (零信任原则)
+add action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=旁路由环境下的-forward-invalid-处理>旁路由环境下的 <code>FORWARD</code> invalid 处理</h3><p>RouterOS 官方建议在 <code>input</code> 和 <code>forward</code> 链丢弃 <code>connection-state=invalid</code> 数据包，因此上面的防火墙示例保留了这条规则。某些非对称路由、策略路由或特殊 UDP 流量，可能让连接跟踪把特定数据包标记为 <code>invalid</code>；这需要结合实际路径和规则计数器诊断，不能仅凭应用超时就认定原因。</p><p>先查看 invalid 规则计数器是否增长，并结合连接跟踪、路由和抓包定位具体流量：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter print stats where chain=forward and connection-state=invalid
+/ipv6 firewall filter print stats where chain=forward and connection-state=invalid</code></pre><script class=code-source type=application/json>"/ip firewall filter print stats where chain=forward and connection-state=invalid
+/ipv6 firewall filter print stats where chain=forward and connection-state=invalid"</script></div><p>不要一开始就全局禁用或删除 <code>FORWARD</code> 的 invalid 丢弃规则。若日志确认某条策略路由路径上的流量被误标为 <code>invalid</code>，应按入口、出口和目标网段添加窄范围例外，并放在 invalid 丢弃规则之前；不要对所有来源、所有协议放行 invalid 流量。</p><p>下方包含完整 <code>FORWARD</code> 规则的 RouterOS 配置示例，已将对应 FakeIP 例外放在 <code>Drop invalid</code> 之前；请选择与你的接口配置相符的一套导入，避免重复导入多个完整方案。</p><h4 id=策略路由到-sing-box-fakeip-的例子>策略路由到 sing-box FakeIP 的例子</h4><p>如果 LAN 客户端访问 FakeIP 时，日志显示流量从同一个 LAN bridge 进入、再从该 bridge 转给 sing-box 网关（例如 <code>in:bridge1 out:bridge1</code>），TCP 后续包可能被连接跟踪标为 <code>invalid</code>。当 <code>Drop invalid</code> 排在 LAN 转发放行前面时，这些包会被丢弃，表现为视频或连接卡住。使用同一 FakeIP 分流的其他应用也可能受影响。</p><p>以下规则按本例环境编写：<code>28.0.0.0/8</code> 和 <code>2001:2::/64</code> 是策略路由到 sing-box 的 FakeIP 网段，LAN bridge 是 <code>bridge1</code>。先核对自己的 FakeIP 网段、路由和接口名称；只有日志确认相同路径后才添加。<code>place-before</code> 会把例外放在 forward 链的 invalid 规则前面：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 place-before=[find where chain=forward and connection-state=invalid] comment=&#34;放行经旁路由的 IPv4 FakeIP 转发&#34;
+
+/ipv6 firewall filter
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 place-before=[find where chain=forward and connection-state=invalid] comment=&#34;放行经旁路由的 IPv6 FakeIP 转发&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=28.0.0.0/8 place-before=[find where chain=forward and connection-state=invalid] comment=\"放行经旁路由的 IPv4 FakeIP 转发\"
+
+/ipv6 firewall filter
+add action=accept chain=forward connection-state=invalid in-interface=bridge1 out-interface=bridge1 dst-address=2001:2::/64 place-before=[find where chain=forward and connection-state=invalid] comment=\"放行经旁路由的 IPv6 FakeIP 转发\""</script></div><p>例外只匹配经同一 bridge 转发到指定 FakeIP 网段的 invalid 包；其他 invalid 流量仍由原规则丢弃。若日志显示其他策略路由目标也有同类问题，应先记录并核实对应的入口、出口和目标前缀，再单独添加例外，不要改成全局放行。</p><h3 id=结束>结束！</h3><h3 id=如创建了interface-list防火墙的配置方案><code>如创建了interface list，防火墙的配置方案：</code></h3><h4 id=1-创建列表名称>1. 创建列表名称</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface list
 add name=WAN
-add name=LAN</code></pre><script class=code-source type=application/json>"/interface list\nadd name=WAN\nadd name=LAN"</script></div><h4 id=2-将-pppoe-out1-加入-wan-列表>2. 将 pppoe-out1 加入 WAN 列表</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface list member
-add interface=pppoe-out1 list=WAN</code></pre><script class=code-source type=application/json>"/interface list member\nadd interface=pppoe-out1 list=WAN"</script></div><h4 id=3-将-bridge1-加入-lan-列表>3. 将 bridge1 加入 LAN 列表</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>add interface=bridge1 list=LAN</code></pre><script class=code-source type=application/json>"add interface=bridge1 list=LAN"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb-1>带添加旁路由ip规则版 (mosdns+sb)：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
+add name=LAN</code></pre><script class=code-source type=application/json>"/interface list
+add name=WAN
+add name=LAN"</script></div><h4 id=2-将-pppoe-out1-加入-wan-列表>2. 将 pppoe-out1 加入 WAN 列表</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface list member
+add interface=pppoe-out1 list=WAN</code></pre><script class=code-source type=application/json>"/interface list member
+add interface=pppoe-out1 list=WAN"</script></div><h4 id=3-将-bridge1-加入-lan-列表>3. 将 bridge1 加入 LAN 列表</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>add interface=bridge1 list=LAN</code></pre><script class=code-source type=application/json>"add interface=bridge1 list=LAN"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb-1>带添加旁路由ip规则版 (mosdns+sb)：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
 /ip firewall filter
@@ -183,6 +357,8 @@ add action=accept chain=forward comment=&#34;2. Skip FastTrack for sing-box in&#
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 3. 基础状态放行与丢弃
 add action=accept chain=forward comment=&#34;4. Accept established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=28.0.0.0/8 comment=&#34;放行经旁路由的 IPv4 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 内网正常转发与端口映射放行
 add action=accept chain=forward comment=&#34;6. Allow LAN forward (Internal Outbound)&#34; in-interface-list=LAN
@@ -208,6 +384,8 @@ add action=accept chain=forward comment=&#34;2. Skip FastTrack for sing-box in&#
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 3. 基础状态放行
 add action=accept chain=forward comment=&#34;4. Accept forward established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=2001:2::/64 comment=&#34;放行经旁路由的 IPv6 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 4. 核心协议与内网放行
 add action=accept chain=forward comment=&#34;6. Accept Forward ICMPv6&#34; protocol=icmpv6
@@ -217,7 +395,66 @@ add action=accept chain=forward comment=&#34;8. Allow NPM (HTTP/HTTPS)&#34; disa
 add action=accept chain=forward comment=&#34;9. Allow Hysteria2/Proxy&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
 add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
 # 6. 兜底拦截
-add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================\n# 第一部分：IPv4 防火墙规则 (已适配 Interface List)\n# ==========================================\n/ip firewall filter\n# --- 入站链 (INPUT) - 保护路由器本体 ---\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN\n# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。\n# WAN口丢弃兜底\nadd action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp\nadd action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN\nadd action=drop chain=input comment=\"10. Drop all remaining input\"\n# --- 转发链 (FORWARD) - 穿过路由器 ---\n# 1. 旁路由豁免\nadd action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=10.20.20.6 connection-state=established,related,untracked\nadd action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=10.20.20.6 connection-state=established,related,untracked\n# 2. FastTrack 加速\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 3. 基础状态放行与丢弃\nadd action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 内网正常转发与端口映射放行\nadd action=accept chain=forward comment=\"6. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN\nadd action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface-list=WAN\n# 5. 全局兜底拦截\nadd action=drop chain=forward comment=\"8. Drop all other forward\"\n# ==========================================\n# 第二部分：IPv6 防火墙规则 (已适配 Interface List)\n# ==========================================\n/ipv6 firewall filter\n# --- 入站链 (INPUT) - 保护路由器本体 ---\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6\nadd action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface-list=WAN protocol=udp src-address=fe80::/10\nadd action=accept chain=input comment=\"5. Allow LAN (Internal Admin)\" in-interface-list=LAN\nadd action=drop chain=input comment=\"6. Drop all not from LAN\" in-interface-list=!LAN\n# --- 转发链 (FORWARD) - 穿过路由器 ---\n# 1. 旁路由豁免\nadd action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=fd88::6666 connection-state=established,related,untracked\nadd action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=fd88::6666 connection-state=established,related,untracked\n# 2. FastTrack 加速\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 3. 基础状态放行\nadd action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 4. 核心协议与内网放行\nadd action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6\nadd action=accept chain=forward comment=\"7. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN\n# 5. 暴露内网服务 (替换为实际公网 IPv6 地址后再按需启用)\nadd action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp\nadd action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp\nadd action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp\n# 6. 兜底拦截\nadd action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=不添加旁路由ip规则版-mosdnssb-1>不添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
+add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================
+# 第一部分：IPv4 防火墙规则 (已适配 Interface List)
+# ==========================================
+/ip firewall filter
+# --- 入站链 (INPUT) - 保护路由器本体 ---
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
+# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
+# WAN口丢弃兜底
+add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp
+add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN
+add action=drop chain=input comment=\"10. Drop all remaining input\"
+# --- 转发链 (FORWARD) - 穿过路由器 ---
+# 1. 旁路由豁免
+add action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=10.20.20.6 connection-state=established,related,untracked
+add action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=10.20.20.6 connection-state=established,related,untracked
+# 2. FastTrack 加速
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 3. 基础状态放行与丢弃
+add action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=28.0.0.0/8 comment=\"放行经旁路由的 IPv4 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 内网正常转发与端口映射放行
+add action=accept chain=forward comment=\"6. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN
+add action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface-list=WAN
+# 5. 全局兜底拦截
+add action=drop chain=forward comment=\"8. Drop all other forward\"
+# ==========================================
+# 第二部分：IPv6 防火墙规则 (已适配 Interface List)
+# ==========================================
+/ipv6 firewall filter
+# --- 入站链 (INPUT) - 保护路由器本体 ---
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6
+add action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface-list=WAN protocol=udp src-address=fe80::/10
+add action=accept chain=input comment=\"5. Allow LAN (Internal Admin)\" in-interface-list=LAN
+add action=drop chain=input comment=\"6. Drop all not from LAN\" in-interface-list=!LAN
+# --- 转发链 (FORWARD) - 穿过路由器 ---
+# 1. 旁路由豁免
+add action=accept chain=forward comment=\"1. Skip FastTrack for sing-box out\" src-address=fd88::6666 connection-state=established,related,untracked
+add action=accept chain=forward comment=\"2. Skip FastTrack for sing-box in\" dst-address=fd88::6666 connection-state=established,related,untracked
+# 2. FastTrack 加速
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 3. 基础状态放行
+add action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=2001:2::/64 comment=\"放行经旁路由的 IPv6 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 4. 核心协议与内网放行
+add action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6
+add action=accept chain=forward comment=\"7. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN
+# 5. 暴露内网服务 (替换为实际公网 IPv6 地址后再按需启用)
+add action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp
+add action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
+add action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
+# 6. 兜底拦截
+add action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=不添加旁路由ip规则版-mosdnssb-1>不添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
 /ip firewall filter
@@ -235,6 +472,8 @@ add action=drop chain=input comment=&#34;10. Drop all remaining input&#34;
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 2. 基础状态放行与丢弃
 add action=accept chain=forward comment=&#34;4. Accept established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=28.0.0.0/8 comment=&#34;放行经旁路由的 IPv4 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 3. 内网正常转发与端口映射放行
 add action=accept chain=forward comment=&#34;6. Allow LAN forward (Internal Outbound)&#34; in-interface-list=LAN
@@ -257,6 +496,8 @@ add action=drop chain=input comment=&#34;6. Drop all not from LAN&#34; in-interf
 add action=fasttrack-connection chain=forward comment=&#34;3. Fasttrack&#34; connection-state=established,related
 # 2. 基础状态放行与丢弃
 add action=accept chain=forward comment=&#34;4. Accept forward established,related,untracked&#34; connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=2001:2::/64 comment=&#34;放行经旁路由的 IPv6 FakeIP 转发&#34;
 add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state=invalid
 # 3. 核心协议与内网放行
 add action=accept chain=forward comment=&#34;6. Accept Forward ICMPv6&#34; protocol=icmpv6
@@ -266,9 +507,64 @@ add action=accept chain=forward comment=&#34;8. Allow NPM (HTTP/HTTPS)&#34; disa
 add action=accept chain=forward comment=&#34;9. Allow Hysteria2/Proxy&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
 add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
 # 5. 兜底拦截
-add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================\n# 第一部分：IPv4 防火墙规则 (已适配 Interface List)\n# ==========================================\n/ip firewall filter\n# --- 入站链 (INPUT) - 保护路由器本体 ---\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN\n# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。\n# WAN口丢弃兜底\nadd action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp\nadd action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN\nadd action=drop chain=input comment=\"10. Drop all remaining input\"\n# --- 转发链 (FORWARD) - 穿过路由器 ---\n# 1. FastTrack 加速\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 2. 基础状态放行与丢弃\nadd action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 3. 内网正常转发与端口映射放行\nadd action=accept chain=forward comment=\"6. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN\nadd action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface-list=WAN\n# 4. 全局兜底拦截\nadd action=drop chain=forward comment=\"8. Drop all other forward\"\n# ==========================================\n# 第二部分：IPv6 防火墙规则 (已适配 Interface List)\n# ==========================================\n/ipv6 firewall filter\n# --- 入站链 (INPUT) - 保护路由器本体 ---\nadd action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid\nadd action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6\nadd action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface-list=WAN protocol=udp src-address=fe80::/10\nadd action=accept chain=input comment=\"5. Allow LAN (Internal Admin)\" in-interface-list=LAN\nadd action=drop chain=input comment=\"6. Drop all not from LAN\" in-interface-list=!LAN\n# --- 转发链 (FORWARD) - 穿过路由器 ---\n# 1. FastTrack 加速\nadd action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related\n# 2. 基础状态放行与丢弃\nadd action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked\nadd action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid\n# 3. 核心协议与内网放行\nadd action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6\nadd action=accept chain=forward comment=\"7. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN\n# 4. 暴露内网服务 (替换为实际公网 IPv6 地址后再按需启用)\nadd action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp\nadd action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp\nadd action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp\n# 5. 兜底拦截\nadd action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=放行内网v6端口>放行内网v6端口</h3><p>例：在你的 RouterOS Terminal 中执行以下命令，放行外网对 12337（Livekit）和 12336（JWT）端口的访问：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 firewall filter
+add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================
+# 第一部分：IPv4 防火墙规则 (已适配 Interface List)
+# ==========================================
+/ip firewall filter
+# --- 入站链 (INPUT) - 保护路由器本体 ---
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
+# 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
+# WAN口丢弃兜底
+add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp
+add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN
+add action=drop chain=input comment=\"10. Drop all remaining input\"
+# --- 转发链 (FORWARD) - 穿过路由器 ---
+# 1. FastTrack 加速
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 2. 基础状态放行与丢弃
+add action=accept chain=forward comment=\"4. Accept established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=28.0.0.0/8 comment=\"放行经旁路由的 IPv4 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 3. 内网正常转发与端口映射放行
+add action=accept chain=forward comment=\"6. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN
+add action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface-list=WAN
+# 4. 全局兜底拦截
+add action=drop chain=forward comment=\"8. Drop all other forward\"
+# ==========================================
+# 第二部分：IPv6 防火墙规则 (已适配 Interface List)
+# ==========================================
+/ipv6 firewall filter
+# --- 入站链 (INPUT) - 保护路由器本体 ---
+add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
+add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
+add action=accept chain=input comment=\"3. Accept ICMPv6 (Critical for IPv6)\" protocol=icmpv6
+add action=accept chain=input comment=\"4. Allow DHCPv6 Client from WAN\" dst-port=546 in-interface-list=WAN protocol=udp src-address=fe80::/10
+add action=accept chain=input comment=\"5. Allow LAN (Internal Admin)\" in-interface-list=LAN
+add action=drop chain=input comment=\"6. Drop all not from LAN\" in-interface-list=!LAN
+# --- 转发链 (FORWARD) - 穿过路由器 ---
+# 1. FastTrack 加速
+add action=fasttrack-connection chain=forward comment=\"3. Fasttrack\" connection-state=established,related
+# 2. 基础状态放行与丢弃
+add action=accept chain=forward comment=\"4. Accept forward established,related,untracked\" connection-state=established,related,untracked
+# 策略路由 FakeIP invalid 例外：仅放行经 LAN 列表接口转发到 sing-box FakeIP 网段
+add action=accept chain=forward connection-state=invalid in-interface-list=LAN out-interface-list=LAN dst-address=2001:2::/64 comment=\"放行经旁路由的 IPv6 FakeIP 转发\"
+add action=drop chain=forward comment=\"5. Drop invalid\" connection-state=invalid
+# 3. 核心协议与内网放行
+add action=accept chain=forward comment=\"6. Accept Forward ICMPv6\" protocol=icmpv6
+add action=accept chain=forward comment=\"7. Allow LAN forward (Internal Outbound)\" in-interface-list=LAN
+# 4. 暴露内网服务 (替换为实际公网 IPv6 地址后再按需启用)
+add action=accept chain=forward comment=\"8. Allow NPM (HTTP/HTTPS)\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=80,443 protocol=tcp
+add action=accept chain=forward comment=\"9. Allow Hysteria2/Proxy\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=udp
+add action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes dst-address=240e::xxxx:xxxx dst-port=36789 protocol=tcp
+# 5. 兜底拦截
+add action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=放行内网v6端口>放行内网v6端口</h3><p>例：在你的 RouterOS Terminal 中执行以下命令，放行外网对 12337（Livekit）和 12336（JWT）端口的访问：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 firewall filter
 add action=accept chain=forward comment=&#34;Allow WAN to Livekit (12337)&#34; dst-port=12337 protocol=tcp place-before=[find comment=&#34;11. Drop all other forward (Protect LAN)&#34;]
-add action=accept chain=forward comment=&#34;Allow WAN to JWT (12336)&#34; dst-port=12336 protocol=tcp place-before=[find comment=&#34;11. Drop all other forward (Protect LAN)&#34;]</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter\nadd action=accept chain=forward comment=\"Allow WAN to Livekit (12337)\" dst-port=12337 protocol=tcp place-before=[find comment=\"11. Drop all other forward (Protect LAN)\"]\nadd action=accept chain=forward comment=\"Allow WAN to JWT (12336)\" dst-port=12336 protocol=tcp place-before=[find comment=\"11. Drop all other forward (Protect LAN)\"]"</script></div><h3 id=ipv6的nd照着操作即可>IPV6的ND照着操作即可</h3></div></article><aside class="sidebar article-sidebar"><section class="widget search-widget"><form class=search-form action=/search/ method=get><label for=article-site-search>搜索</label><div class=search-row><input id=article-site-search name=q type=search placeholder=搜索教程... autocomplete=off>
+add action=accept chain=forward comment=&#34;Allow WAN to JWT (12336)&#34; dst-port=12336 protocol=tcp place-before=[find comment=&#34;11. Drop all other forward (Protect LAN)&#34;]</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter
+add action=accept chain=forward comment=\"Allow WAN to Livekit (12337)\" dst-port=12337 protocol=tcp place-before=[find comment=\"11. Drop all other forward (Protect LAN)\"]
+add action=accept chain=forward comment=\"Allow WAN to JWT (12336)\" dst-port=12336 protocol=tcp place-before=[find comment=\"11. Drop all other forward (Protect LAN)\"]"</script></div><h3 id=ipv6的nd照着操作即可>IPV6的ND照着操作即可</h3></div></article><aside class="sidebar article-sidebar"><section class="widget search-widget"><form class=search-form action=/search/ method=get><label for=article-site-search>搜索</label><div class=search-row><input id=article-site-search name=q type=search placeholder=搜索教程... autocomplete=off>
 <button type=submit aria-label=搜索>搜索</button></div></form></section><section class="widget article-latest-widget"><h2>最新文章</h2><ol class=article-latest-list><li><a href=/posts/routeros/routeros-downstream-ipv6-nat66-singbox/><img src=/posts/routeros/routeros-downstream-ipv6-nat66-singbox/assets/cover.svg alt>
 <span class=latest-rank>1</span>
 <span class=latest-title>二级 RouterOS IPv6 完整配置：RA/SLAAC、DHCPv6-PD 与防火墙</span></a></li><li><a href=/posts/ai/codex-custom-instructions-template/><img src=/posts/ai/codex-custom-instructions-template/assets/cover.svg alt>
