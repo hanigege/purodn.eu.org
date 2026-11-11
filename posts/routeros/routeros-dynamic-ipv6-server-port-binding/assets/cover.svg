@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1930"/><stop offset="1" stop-color="#153d52"/></linearGradient></defs>
+<rect width="1280" height="720" rx="28" fill="url(#bg)"/>
+<g font-family="system-ui, sans-serif" fill="#eef7ff">
+<text x="76" y="103" font-size="27" fill="#75d9df">RouterOS · IPv6 · DHCPv6-PD</text>
+<text x="76" y="190" font-size="51" font-weight="700">动态公网 IPv6</text>
+<text x="76" y="260" font-size="51" font-weight="700">把端口绑定到指定服务器</text>
+<text x="78" y="321" font-size="26" fill="#bdcedf">固定后缀 + /128 地址列表 + 每分钟更新</text>
+<g stroke="#75d9df" stroke-width="4" fill="none"><path d="M280 489H570M570 489V432H854M570 489V579H854"/><circle cx="570" cy="489" r="9" fill="#75d9df"/></g>
+<rect x="76" y="430" width="230" height="120" rx="18" fill="#203b59" stroke="#75d9df" stroke-width="2"/>
+<text x="108" y="478" font-size="24">当前 PD 前缀</text><text x="108" y="520" font-size="28" font-weight="700">RouterOS</text>
+<rect x="830" y="382" width="350" height="106" rx="18" fill="#203b59" stroke="#75d9df" stroke-width="2"/>
+<text x="862" y="425" font-size="25" font-weight="700">Matrix / Synapse</text><text x="862" y="462" font-size="23" fill="#bdcedf">目标地址精确到 /128</text>
+<rect x="830" y="530" width="350" height="106" rx="18" fill="#203b59" stroke="#75d9df" stroke-width="2"/>
+<text x="862" y="573" font-size="25" font-weight="700">Shadowsocks</text><text x="862" y="610" font-size="23" fill="#bdcedf">独立目标 · 限定入站端口</text>
+<text x="78" y="662" font-size="23" fill="#bdcedf">从备份到验证，一步一步完成</text>
+</g></svg>
