@@ -97,11 +97,6 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept bridge1 (Internal Admin)&#34; in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
@@ -144,11 +139,6 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
@@ -192,11 +182,6 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept bridge1 (Internal Admin)&#34; in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
@@ -237,11 +222,6 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
@@ -424,11 +404,6 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept LAN (Internal Admin)&#34; in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
@@ -501,11 +476,6 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
@@ -578,11 +548,6 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept LAN (Internal Admin)&#34; in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
@@ -649,11 +614,6 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
-# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
-add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
-add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
-add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
-add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
 # 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
 add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
 add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
