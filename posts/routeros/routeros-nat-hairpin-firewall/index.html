@@ -82,7 +82,13 @@ add chain=srcnat action=masquerade out-interface-list=WAN comment=\"Global Inter
 /ipv6 firewall filter print detail</code></pre><script class=code-source type=application/json>"/system backup save name=before-firewall-change
 /export file=before-firewall-change
 /ip firewall filter print detail
-/ipv6 firewall filter print detail"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb>带添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
+/ipv6 firewall filter print detail"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb>带添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage3
+
+/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
 # ====================
@@ -91,6 +97,18 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept bridge1 (Internal Admin)&#34; in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=&#34;ROS-AB 3 stage3 from stage2&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=&#34;ROS-AB 4 stage2 from stage1&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=&#34;ROS-AB 5 stage1 initial attempt&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=&#34;8. Accept ICMP (PMTUD)&#34; in-interface=pppoe-out1 protocol=icmp
 add action=drop chain=input comment=&#34;9. Drop all other input from WAN&#34; in-interface=pppoe-out1
 add action=drop chain=input comment=&#34;10. Drop all remaining input&#34;
@@ -111,7 +129,13 @@ add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state
 add action=accept chain=forward comment=&#34;6. Allow bridge1 forward (Internal Outbound)&#34; in-interface=bridge1
 add action=accept chain=forward comment=&#34;7. Allow DSTNAT (Port Forwarding)&#34; connection-nat-state=dstnat in-interface=pppoe-out1
 # 5. 全局兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter
+add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage3
+
+/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
 # ====================
@@ -120,6 +144,18 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=\"ROS-AB 3 stage3 from stage2\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=\"ROS-AB 4 stage2 from stage1\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=\"ROS-AB 5 stage1 initial attempt\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp
 add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1
 add action=drop chain=input comment=\"10. Drop all remaining input\"
@@ -141,7 +177,13 @@ add action=accept chain=forward comment=\"6. Allow bridge1 forward (Internal Out
 add action=accept chain=forward comment=\"7. Allow DSTNAT (Port Forwarding)\" connection-nat-state=dstnat in-interface=pppoe-out1
 # 5. 全局兜底拦截 (零信任原则)
 add action=drop chain=forward comment=\"8. Drop all other forward\""</script></div><h4 id=转发链-forward特别说明>转发链 (FORWARD)特别说明：</h4><p><strong>FORWARD链</strong>“旁路由豁免”填入你的<code>mos+sb的ip</code>
-<strong>INPUT 链</strong>默认不开放 WAN 管理入口；确需远程管理时，只允许固定可信公网源地址，并把放行规则放在 WAN 丢弃规则之前。</p><h3 id=不添加旁路由ip规则版>不添加旁路由ip规则版：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall filter
+<strong>INPUT 链</strong>默认不开放 WAN 管理入口；确需远程管理时，只允许固定可信公网源地址，并把放行规则放在 WAN 丢弃规则之前。</p><h3 id=不添加旁路由ip规则版>不添加旁路由ip规则版：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage3
+
+/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
 # ====================
@@ -150,6 +192,18 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept bridge1 (Internal Admin)&#34; in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=&#34;ROS-AB 3 stage3 from stage2&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=&#34;ROS-AB 4 stage2 from stage1&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=&#34;ROS-AB 5 stage1 initial attempt&#34; connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=&#34;8. Accept ICMP (PMTUD)&#34; in-interface=pppoe-out1 protocol=icmp
 add action=drop chain=input comment=&#34;9. Drop all other input from WAN&#34; in-interface=pppoe-out1
 add action=drop chain=input comment=&#34;10. Drop all remaining input&#34;
@@ -168,7 +222,13 @@ add action=drop chain=forward comment=&#34;5. Drop invalid&#34; connection-state
 add action=accept chain=forward comment=&#34;6. Allow bridge1 forward (Internal Outbound)&#34; in-interface=bridge1
 add action=accept chain=forward comment=&#34;7. Allow DSTNAT (Port Forwarding)&#34; connection-nat-state=dstnat in-interface=pppoe-out1
 # 5. 全局兜底拦截 (零信任原则)
-add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"/ip firewall filter
+add action=drop chain=forward comment=&#34;8. Drop all other forward&#34;</code></pre><script class=code-source type=application/json>"# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage3
+
+/ip firewall filter
 # ====================
 # 入站链 (INPUT) - 访问路由器本身
 # ====================
@@ -177,6 +237,18 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept bridge1 (Internal Admin)\" in-interface=bridge1
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃与兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=\"ROS-AB 3 stage3 from stage2\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=\"ROS-AB 4 stage2 from stage1\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=\"ROS-AB 5 stage1 initial attempt\" connection-state=new dst-port=3981,2222 in-interface=pppoe-out1 protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface=pppoe-out1 protocol=icmp
 add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface=pppoe-out1
 add action=drop chain=input comment=\"10. Drop all remaining input\"
@@ -339,6 +411,12 @@ add interface=pppoe-out1 list=WAN</code></pre><script class=code-source type=app
 add interface=pppoe-out1 list=WAN"</script></div><h4 id=3-将-bridge1-加入-lan-列表>3. 将 bridge1 加入 LAN 列表</h4><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>add interface=bridge1 list=LAN</code></pre><script class=code-source type=application/json>"add interface=bridge1 list=LAN"</script></div><h3 id=带添加旁路由ip规则版-mosdnssb-1>带添加旁路由ip规则版 (mosdns+sb)：</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
+# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage3
+
 /ip firewall filter
 # --- 入站链 (INPUT) - 保护路由器本体 ---
 add action=accept chain=input comment=&#34;1. Accept established,related,untracked&#34; connection-state=established,related,untracked
@@ -346,6 +424,18 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept LAN (Internal Admin)&#34; in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=&#34;ROS-AB 3 stage3 from stage2&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=&#34;ROS-AB 4 stage2 from stage1&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=&#34;ROS-AB 5 stage1 initial attempt&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=&#34;8. Accept ICMP (PMTUD)&#34; in-interface-list=WAN protocol=icmp
 add action=drop chain=input comment=&#34;9. Drop all other input from WAN&#34; in-interface-list=WAN
 add action=drop chain=input comment=&#34;10. Drop all remaining input&#34;
@@ -398,6 +488,12 @@ add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled
 add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
+# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage3
+
 /ip firewall filter
 # --- 入站链 (INPUT) - 保护路由器本体 ---
 add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
@@ -405,6 +501,18 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=\"ROS-AB 3 stage3 from stage2\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=\"ROS-AB 4 stage2 from stage1\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=\"ROS-AB 5 stage1 initial attempt\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp
 add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN
 add action=drop chain=input comment=\"10. Drop all remaining input\"
@@ -457,6 +565,12 @@ add action=accept chain=forward comment=\"10. Allow Shadowsocks\" disabled=yes d
 add action=drop chain=forward comment=\"11. Drop all other forward (Protect LAN)\""</script></div><h3 id=不添加旁路由ip规则版-mosdnssb-1>不添加旁路由ip规则版 (mosdns+sb):</h3><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
+# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=&#34;ROS-AB disabled seed&#34; disabled=yes list=ros_ab_stage3
+
 /ip firewall filter
 # --- 入站链 (INPUT) - 保护路由器本体 ---
 add action=accept chain=input comment=&#34;1. Accept established,related,untracked&#34; connection-state=established,related,untracked
@@ -464,6 +578,18 @@ add action=drop chain=input comment=&#34;2. Drop invalid&#34; connection-state=i
 add action=accept chain=input comment=&#34;3. Accept LAN (Internal Admin)&#34; in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=&#34;4. Drop Bruteforce IPs&#34; disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=&#34;5. Accept limited connections&#34; connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;6. Add to Bruteforce List&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=&#34;7. Drop excess packets&#34; disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=&#34;ROS-AB 1 drop blacklist&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=&#34;ROS-AB 2 blacklist stage3&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=&#34;ROS-AB 3 stage3 from stage2&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=&#34;ROS-AB 4 stage2 from stage1&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=&#34;ROS-AB 5 stage1 initial attempt&#34; connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=&#34;8. Accept ICMP (PMTUD)&#34; in-interface-list=WAN protocol=icmp
 add action=drop chain=input comment=&#34;9. Drop all other input from WAN&#34; in-interface-list=WAN
 add action=drop chain=input comment=&#34;10. Drop all remaining input&#34;
@@ -510,6 +636,12 @@ add action=accept chain=forward comment=&#34;10. Allow Shadowsocks&#34; disabled
 add action=drop chain=forward comment=&#34;11. Drop all other forward (Protect LAN)&#34;</code></pre><script class=code-source type=application/json>"# ==========================================
 # 第一部分：IPv4 防火墙规则 (已适配 Interface List)
 # ==========================================
+# 初始化 3 个禁用的阶段列表项（不计入上面的 5 条 filter 规则）
+/ip firewall address-list
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage1
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage2
+add address=0.0.0.0/32 comment=\"ROS-AB disabled seed\" disabled=yes list=ros_ab_stage3
+
 /ip firewall filter
 # --- 入站链 (INPUT) - 保护路由器本体 ---
 add action=accept chain=input comment=\"1. Accept established,related,untracked\" connection-state=established,related,untracked
@@ -517,6 +649,18 @@ add action=drop chain=input comment=\"2. Drop invalid\" connection-state=invalid
 add action=accept chain=input comment=\"3. Accept LAN (Internal Admin)\" in-interface-list=LAN
 # 默认不从 WAN 开放 WinBox/SSH；管理入口仅允许 LAN。若必须远程管理，应在 WAN 兜底丢弃规则之前添加仅允许固定可信源地址的规则。
 # WAN口丢弃兜底
+# 旧版防爆破规则（全部禁用，仅保留作对照；不要启用）
+add action=drop chain=input comment=\"4. Drop Bruteforce IPs\" disabled=yes dst-port=3981,2222 protocol=tcp src-address-list=bruteforce_blacklist
+add action=accept chain=input comment=\"5. Accept limited connections\" connection-limit=10,32 disabled=yes dst-port=3981,2222 protocol=tcp
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"6. Add to Bruteforce List\" disabled=yes dst-port=3981,2222 protocol=tcp
+add action=drop chain=input comment=\"7. Drop excess packets\" disabled=yes dst-port=3981,2222 protocol=tcp
+# 本次新增防爆破过滤规则共 5 条（ROS-AB 1–5）；仅跟踪 WAN 的 TCP 3981、2222 新连接
+add action=drop chain=input comment=\"ROS-AB 1 drop blacklist\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=bruteforce_blacklist
+add action=add-src-to-address-list address-list=bruteforce_blacklist address-list-timeout=3d chain=input comment=\"ROS-AB 2 blacklist stage3\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage3
+add action=add-src-to-address-list address-list=ros_ab_stage3 address-list-timeout=1h chain=input comment=\"ROS-AB 3 stage3 from stage2\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage2
+add action=add-src-to-address-list address-list=ros_ab_stage2 address-list-timeout=15m chain=input comment=\"ROS-AB 4 stage2 from stage1\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp src-address-list=ros_ab_stage1
+add action=add-src-to-address-list address-list=ros_ab_stage1 address-list-timeout=5m chain=input comment=\"ROS-AB 5 stage1 initial attempt\" connection-state=new dst-port=3981,2222 in-interface-list=WAN protocol=tcp
+# 未命中黑名单的 WAN 连接仍由下方原有 WAN 默认丢弃规则拒绝
 add action=accept chain=input comment=\"8. Accept ICMP (PMTUD)\" in-interface-list=WAN protocol=icmp
 add action=drop chain=input comment=\"9. Drop all other input from WAN\" in-interface-list=WAN
 add action=drop chain=input comment=\"10. Drop all remaining input\"
