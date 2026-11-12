@@ -1,0 +1,217 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>双网口 RouterOS 小主机恢复教程：IPv4、IPv6 与 sing-box | Jay's Blog</title>
+<meta name=description content="从新机网口命名、动态 WAN、LAN DHCP 到 sing-box 双栈策略路由、防火墙和 NAT 的恢复步骤。"><link rel=icon href=/favicon/favicon.ico sizes=32x32><link rel=icon type=image/svg+xml href=/favicon/favicon.svg><link rel=apple-touch-icon href=/favicon/apple-touch-icon.png><meta name=theme-color content="#222831"><link rel=stylesheet href=/css/main.min.cdd752b721ae641c8ae73ed6a84114f4376fceb3b182cfe306c100cd4d702918.css integrity="sha256-zddStyGuZByK5z7WqEEU9DdvzrOxgs/jBsEAzU1wKRg="></head><body><header class=site-header><div class=header-inner><a class=brand href=/ aria-label="Jay's Blog 首页"><img class=brand-sign src=/images/jays-blog-brand.png alt="Jay's Blog"></a><nav class=site-nav aria-label=主导航><a href=/>首页</a>
+<a href=/categories/ai/>AI</a>
+<a href=/categories/router/>Router</a>
+<a href=/categories/linux/>Linux</a>
+<a href=/categories/freebsd/>FreeBSD</a>
+<a href=/categories/docker/>Docker</a></nav></div></header><main><div class=article-layout><article class=article><header class=article-header><div class=post-meta><span>Router</span>
+<time datetime=2026-11-12>2026年11月12日</time></div><h1>双网口 RouterOS 小主机恢复教程：IPv4、IPv6 与 sing-box</h1><p>从新机网口命名、动态 WAN、LAN DHCP 到 sing-box 双栈策略路由、防火墙和 NAT 的恢复步骤。</p></header><img class=article-cover src=/posts/routeros/smbox-dualnic-routeros-firewall/assets/cover.svg alt><div class=article-content><p>按编号配置新双网口 RouterOS。示例端口：<code>ether1</code> 为 LAN、<code>ether2</code> 为 WAN；LAN 网关 <code>10.0.0.1/24</code>，sing-box 网关 <code>10.0.0.6</code>、<code>fd88:1::6</code>。WAN 地址动态获取。</p><p><a href=assets/smbox-dualnic-routeros-full-config.rsc>下载完整 RouterOS 导入脚本</a></p><h2 id=1-准备新设备与管理账号>1. 准备新设备与管理账号</h2><p>只对准备重装的设备使用无默认配置启动；该命令会清空配置。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/system reset-configuration no-defaults=yes skip-backup=yes</code></pre><script class=code-source type=application/json>"/system reset-configuration no-defaults=yes skip-backup=yes"</script></div><p>重启后用 WinBox MAC 登录，创建内网管理员：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/user add name=opsadmin group=full comment=&#34;LAN 管理员&#34;</code></pre><script class=code-source type=application/json>"/user add name=opsadmin group=full comment=\"LAN 管理员\""</script></div><p>在 WinBox 的 System → Users 为该账号设置强密码。LAN 配置完成后再将账号限制到 <code>10.0.0.0/24</code>，确认新账号可登录后禁用默认 <code>admin</code>。不要把密码、SSH key 或 PPPoE 凭据写进 <code>.rsc</code> 文件。WAN 暂时不要接入。</p><p>设置设备名、时区和 NTP：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/system identity
+set name=&#34;DualNIC-RouterOS&#34;
+/system clock
+set time-zone-autodetect=no time-zone-name=Asia/Shanghai
+/system ntp client
+set enabled=yes mode=unicast servers=ntp1.aliyun.com,time1.cloud.tencent.com,cn.pool.ntp.org,time.windows.com</code></pre><script class=code-source type=application/json>"/system identity\nset name=\"DualNIC-RouterOS\"\n/system clock\nset time-zone-autodetect=no time-zone-name=Asia/Shanghai\n/system ntp client\nset enabled=yes mode=unicast servers=ntp1.aliyun.com,time1.cloud.tencent.com,cn.pool.ntp.org,time.windows.com"</script></div><h2 id=2-命名-wanlan-网口>2. 命名 WAN、LAN 网口</h2><p>先根据网口链路灯确认实际端口对应关系。本文示例：<code>ether1</code> 是 LAN，<code>ether2</code> 是 WAN。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface ethernet
+set [find where default-name=ether1] name=lan
+set [find where default-name=ether2] name=wan
+/interface bridge
+add name=bridge1 protocol-mode=rstp
+/interface bridge port
+add bridge=bridge1 interface=lan
+/interface list
+add name=LAN
+add name=WAN
+/interface list member
+add list=LAN interface=bridge1
+add list=WAN interface=wan</code></pre><script class=code-source type=application/json>"/interface ethernet\nset [find where default-name=ether1] name=lan\nset [find where default-name=ether2] name=wan\n/interface bridge\nadd name=bridge1 protocol-mode=rstp\n/interface bridge port\nadd bridge=bridge1 interface=lan\n/interface list\nadd name=LAN\nadd name=WAN\n/interface list member\nadd list=LAN interface=bridge1\nadd list=WAN interface=wan"</script></div><h2 id=3-设置-lan-ipv4-与-dhcp>3. 设置 LAN IPv4 与 DHCP</h2><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip address
+add address=10.0.0.1/24 interface=bridge1 comment=&#34;LAN IPv4 网关&#34;
+/ip pool
+add name=dhcpv4-pool1 ranges=10.0.0.100-10.0.0.250 comment=&#34;LAN DHCP 地址池&#34;
+/ip dhcp-server
+add name=dhcpv4-server1 interface=bridge1 address-pool=dhcpv4-pool1 lease-time=1d disabled=no comment=&#34;LAN DHCP Server&#34;
+/ip dhcp-server network
+add address=10.0.0.0/24 gateway=10.0.0.1 dns-server=10.0.0.1 comment=&#34;LAN DHCP 网段&#34;</code></pre><script class=code-source type=application/json>"/ip address\nadd address=10.0.0.1/24 interface=bridge1 comment=\"LAN IPv4 网关\"\n/ip pool\nadd name=dhcpv4-pool1 ranges=10.0.0.100-10.0.0.250 comment=\"LAN DHCP 地址池\"\n/ip dhcp-server\nadd name=dhcpv4-server1 interface=bridge1 address-pool=dhcpv4-pool1 lease-time=1d disabled=no comment=\"LAN DHCP Server\"\n/ip dhcp-server network\nadd address=10.0.0.0/24 gateway=10.0.0.1 dns-server=10.0.0.1 comment=\"LAN DHCP 网段\""</script></div><p>DHCP 地址池为 <code>10.0.0.100-10.0.0.250</code>，网关和 DNS 地址为 <code>10.0.0.1</code>。</p><h2 id=4-设置-routeros-dns>4. 设置 RouterOS DNS</h2><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip dns
+set servers=10.0.0.6 allow-remote-requests=yes cache-size=8192KiB</code></pre><script class=code-source type=application/json>"/ip dns\nset servers=10.0.0.6 allow-remote-requests=yes cache-size=8192KiB"</script></div><h2 id=5-设置动态-wan-ipv4>5. 设置动态 WAN IPv4</h2><p>WAN 使用 DHCP 获取上游地址和默认路由，不填固定 IP：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip dhcp-client
+add interface=wan add-default-route=yes default-route-distance=1 use-peer-dns=no use-peer-ntp=no disabled=no comment=&#34;WAN 动态 IPv4&#34;</code></pre><script class=code-source type=application/json>"/ip dhcp-client\nadd interface=wan add-default-route=yes default-route-distance=1 use-peer-dns=no use-peer-ntp=no disabled=no comment=\"WAN 动态 IPv4\""</script></div><h2 id=6-设置-ipv6-ra-和-lan-ula>6. 设置 IPv6 RA 和 LAN ULA</h2><p>WAN IPv6 地址与默认路由由上游 RA 动态分配；LAN 使用 ULA：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 address
+add address=fd88:1::1/64 interface=bridge1 advertise=yes comment=&#34;LAN IPv6 ULA&#34;
+/ipv6 nd
+add interface=bridge1 ra-interval=5m-15m advertise-mac-address=no advertise-dns=no comment=&#34;LAN IPv6 RA&#34;
+/ipv6 settings
+set forward=yes accept-router-advertisements=yes accept-router-advertisements-on=WAN</code></pre><script class=code-source type=application/json>"/ipv6 address\nadd address=fd88:1::1/64 interface=bridge1 advertise=yes comment=\"LAN IPv6 ULA\"\n/ipv6 nd\nadd interface=bridge1 ra-interval=5m-15m advertise-mac-address=no advertise-dns=no comment=\"LAN IPv6 RA\"\n/ipv6 settings\nset forward=yes accept-router-advertisements=yes accept-router-advertisements-on=WAN"</script></div><p>防火墙和 NAT 按 <code>WAN</code> 接口列表匹配，地址变化无需改规则。LAN 网关保持固定，终端地址动态分配。</p><h2 id=7-pppoe-上网可选>7. PPPoE 上网（可选）</h2><p>若 ISP 使用 PPPoE，先替换账号密码占位符；不要把真实凭据保存到 <code>.rsc</code> 或公开仓库：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface pppoe-client
+add name=pppoe-out1 interface=wan user=&#34;&lt;PPPOE_USER&gt;&#34; password=&#34;&lt;PPPOE_PASSWORD&gt;&#34; add-default-route=yes default-route-distance=1 use-peer-dns=no disabled=no comment=&#34;WAN PPPoE&#34;
+/interface list member
+add list=WAN interface=pppoe-out1 comment=&#34;PPPoE 动态 WAN&#34;
+/ip dhcp-client
+disable [find where interface=wan]</code></pre><script class=code-source type=application/json>"/interface pppoe-client\nadd name=pppoe-out1 interface=wan user=\"\u003cPPPOE_USER\u003e\" password=\"\u003cPPPOE_PASSWORD\u003e\" add-default-route=yes default-route-distance=1 use-peer-dns=no disabled=no comment=\"WAN PPPoE\"\n/interface list member\nadd list=WAN interface=pppoe-out1 comment=\"PPPoE 动态 WAN\"\n/ip dhcp-client\ndisable [find where interface=wan]"</script></div><p>若上游是另一台路由器，本机可能拿到私网 WAN 地址；DDNS 不能穿透上游 NAT 或运营商 CGNAT。本教程不开放 WAN 管理。</p><h2 id=8-启用动态-dns可选>8. 启用动态 DNS（可选）</h2><p>DDNS 只更新动态地址，不会开放端口：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip cloud
+set ddns-enabled=yes update-time=yes
+/ip cloud print</code></pre><script class=code-source type=application/json>"/ip cloud\nset ddns-enabled=yes update-time=yes\n/ip cloud print"</script></div><h2 id=9-获取动态-ipv6-前缀可选>9. 获取动态 IPv6 前缀（可选）</h2><p>ISP 支持 DHCPv6-PD 时执行；不需要填写固定前缀。默认仍使用 ULA + NAT66：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 dhcp-client
+add interface=wan request=prefix pool-name=wan-ipv6-pool add-default-route=no use-peer-dns=no disabled=no comment=&#34;ISP 动态 IPv6 Prefix Delegation&#34;
+/ipv6 address
+add address=::1/64 from-pool=wan-ipv6-pool interface=bridge1 advertise=yes comment=&#34;LAN 使用 ISP 委派的动态前缀&#34;</code></pre><script class=code-source type=application/json>"/ipv6 dhcp-client\nadd interface=wan request=prefix pool-name=wan-ipv6-pool add-default-route=no use-peer-dns=no disabled=no comment=\"ISP 动态 IPv6 Prefix Delegation\"\n/ipv6 address\nadd address=::1/64 from-pool=wan-ipv6-pool interface=bridge1 advertise=yes comment=\"LAN 使用 ISP 委派的动态前缀\""</script></div><p>如果 WAN 使用 PPPoE，把上面 DHCPv6 Client 命令中的 <code>interface=wan</code> 改为 <code>interface=pppoe-out1</code>。</p><p>WAN 默认路由由 RA 提供；IPv6 防火墙已允许 WAN 上游 DHCPv6 响应。PD 配置成功后，LAN 客户端应获得全局 IPv6 地址。详见 MikroTik <a href=https://help.mikrotik.com/docs/spaces/ROS/pages/24805500/DHCP>DHCPv6-PD</a> 和 <a href=https://help.mikrotik.com/docs/spaces/ROS/pages/103841817/IP%2BSettings>IPv6 Settings</a>。</p><h2 id=10-建立-sing-box-策略路由>10. 建立 sing-box 策略路由</h2><p>创建 IPv4、IPv6 独立路由表及 sing-box 默认网关：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/routing table
+add name=sing-box-v4 fib
+add name=sing-box-v6 fib
+/ip route
+add dst-address=0.0.0.0/0 gateway=10.0.0.6 routing-table=sing-box-v4 distance=1 comment=&#34;sing-box IPv4 默认路由&#34;
+/ipv6 route
+add dst-address=::/0 gateway=fd88:1::6 routing-table=sing-box-v6 distance=1 comment=&#34;sing-box IPv6 默认路由&#34;</code></pre><script class=code-source type=application/json>"/routing table\nadd name=sing-box-v4 fib\nadd name=sing-box-v6 fib\n/ip route\nadd dst-address=0.0.0.0/0 gateway=10.0.0.6 routing-table=sing-box-v4 distance=1 comment=\"sing-box IPv4 默认路由\"\n/ipv6 route\nadd dst-address=::/0 gateway=fd88:1::6 routing-table=sing-box-v6 distance=1 comment=\"sing-box IPv6 默认路由\""</script></div><p>先导入两组代理目的地址。共 42 条 IPv4、6 条 IPv6，包含 FakeIP 网段：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall address-list
+add list=proxy_ipv4 address=28.0.0.0/8 comment=&#34;IPv4 FakeIP&#34;
+add list=proxy_ipv4 address=1.1.1.1 comment=&#34;IPv4 DNS 目的地址&#34;
+add list=proxy_ipv4 address=1.0.0.1 comment=&#34;IPv4 DNS 目的地址&#34;
+add list=proxy_ipv4 address=8.8.8.8 comment=&#34;IPv4 DNS 目的地址&#34;
+add list=proxy_ipv4 address=8.8.4.4 comment=&#34;IPv4 DNS 目的地址&#34;
+add list=proxy_ipv4 address=8.41.4.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=23.23.189.144/28 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=23.246.0.0/18 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=34.195.253.0/25 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=37.77.184.0/21 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=38.72.126.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=45.57.0.0/17 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=52.24.178.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=52.35.140.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=54.204.25.0/28 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=54.213.167.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=64.120.128.0/17 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=66.197.128.0/17 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=69.53.224.0/19 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=103.87.204.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=108.175.32.0/20 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=185.2.220.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=185.9.188.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=192.173.64.0/18 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=198.38.96.0/19 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=198.45.48.0/20 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=203.75.84.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=203.198.13.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=203.198.80.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=207.45.72.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=208.75.76.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=210.0.153.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.56.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.4.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.8.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.16.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.12.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=149.154.160.0/20 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.105.192.0/23 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=91.108.20.0/22 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=185.76.151.0/24 comment=&#34;IPv4 代理服务网段&#34;
+add list=proxy_ipv4 address=95.161.64.0/20 comment=&#34;IPv4 代理服务网段&#34;
+
+/ipv6 firewall address-list
+add list=proxy_ipv6 address=2001:2::/64 comment=&#34;IPv6 FakeIP&#34;
+add list=proxy_ipv6 address=2001:b28:f23d::/48 comment=&#34;IPv6 代理服务网段&#34;
+add list=proxy_ipv6 address=2001:b28:f23f::/48 comment=&#34;IPv6 代理服务网段&#34;
+add list=proxy_ipv6 address=2001:67c:4e8::/48 comment=&#34;IPv6 代理服务网段&#34;
+add list=proxy_ipv6 address=2001:b28:f23c::/48 comment=&#34;IPv6 代理服务网段&#34;
+add list=proxy_ipv6 address=2a0a:f280::/32 comment=&#34;IPv6 代理服务网段&#34;
+
+/ip firewall address-list
+add list=ros_ab_stage1 address=0.0.0.0/32 disabled=yes comment=&#34;ROS-AB 禁用占位项&#34;
+add list=ros_ab_stage2 address=0.0.0.0/32 disabled=yes comment=&#34;ROS-AB 禁用占位项&#34;
+add list=ros_ab_stage3 address=0.0.0.0/32 disabled=yes comment=&#34;ROS-AB 禁用占位项&#34;</code></pre><script class=code-source type=application/json>"/ip firewall address-list\nadd list=proxy_ipv4 address=28.0.0.0/8 comment=\"IPv4 FakeIP\"\nadd list=proxy_ipv4 address=1.1.1.1 comment=\"IPv4 DNS 目的地址\"\nadd list=proxy_ipv4 address=1.0.0.1 comment=\"IPv4 DNS 目的地址\"\nadd list=proxy_ipv4 address=8.8.8.8 comment=\"IPv4 DNS 目的地址\"\nadd list=proxy_ipv4 address=8.8.4.4 comment=\"IPv4 DNS 目的地址\"\nadd list=proxy_ipv4 address=8.41.4.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=23.23.189.144/28 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=23.246.0.0/18 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=34.195.253.0/25 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=37.77.184.0/21 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=38.72.126.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=45.57.0.0/17 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=52.24.178.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=52.35.140.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=54.204.25.0/28 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=54.213.167.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=64.120.128.0/17 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=66.197.128.0/17 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=69.53.224.0/19 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=103.87.204.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=108.175.32.0/20 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=185.2.220.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=185.9.188.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=192.173.64.0/18 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=198.38.96.0/19 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=198.45.48.0/20 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=203.75.84.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=203.198.13.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=203.198.80.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=207.45.72.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=208.75.76.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=210.0.153.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.56.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.4.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.8.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.16.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.12.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=149.154.160.0/20 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.105.192.0/23 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=91.108.20.0/22 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=185.76.151.0/24 comment=\"IPv4 代理服务网段\"\nadd list=proxy_ipv4 address=95.161.64.0/20 comment=\"IPv4 代理服务网段\"\n\n/ipv6 firewall address-list\nadd list=proxy_ipv6 address=2001:2::/64 comment=\"IPv6 FakeIP\"\nadd list=proxy_ipv6 address=2001:b28:f23d::/48 comment=\"IPv6 代理服务网段\"\nadd list=proxy_ipv6 address=2001:b28:f23f::/48 comment=\"IPv6 代理服务网段\"\nadd list=proxy_ipv6 address=2001:67c:4e8::/48 comment=\"IPv6 代理服务网段\"\nadd list=proxy_ipv6 address=2001:b28:f23c::/48 comment=\"IPv6 代理服务网段\"\nadd list=proxy_ipv6 address=2a0a:f280::/32 comment=\"IPv6 代理服务网段\"\n\n/ip firewall address-list\nadd list=ros_ab_stage1 address=0.0.0.0/32 disabled=yes comment=\"ROS-AB 禁用占位项\"\nadd list=ros_ab_stage2 address=0.0.0.0/32 disabled=yes comment=\"ROS-AB 禁用占位项\"\nadd list=ros_ab_stage3 address=0.0.0.0/32 disabled=yes comment=\"ROS-AB 禁用占位项\""</script></div><p>再建策略路由和 MSS clamp。FastTrack 不启用：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall mangle
+add chain=prerouting action=mark-routing new-routing-mark=sing-box-v4 passthrough=yes dst-address-list=proxy_ipv4 comment=&#34;IPv4 代理目的地址策略路由&#34;
+add chain=forward action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=&#34;IPv4 转发 TCP MSS clamp&#34;
+add chain=output action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=&#34;IPv4 本机 TCP MSS clamp&#34;
+/ipv6 firewall mangle
+add chain=prerouting action=mark-routing new-routing-mark=sing-box-v6 passthrough=yes dst-address-list=proxy_ipv6 comment=&#34;IPv6 代理目的地址策略路由&#34;
+add chain=forward action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=&#34;IPv6 转发 TCP MSS clamp&#34;
+add chain=output action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=&#34;IPv6 本机 TCP MSS clamp&#34;
+/routing rule
+add routing-mark=sing-box-v6 action=lookup-only-in-table table=sing-box-v6 comment=&#34;IPv6 sing-box 策略表查询&#34;</code></pre><script class=code-source type=application/json>"/ip firewall mangle\nadd chain=prerouting action=mark-routing new-routing-mark=sing-box-v4 passthrough=yes dst-address-list=proxy_ipv4 comment=\"IPv4 代理目的地址策略路由\"\nadd chain=forward action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=\"IPv4 转发 TCP MSS clamp\"\nadd chain=output action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=\"IPv4 本机 TCP MSS clamp\"\n/ipv6 firewall mangle\nadd chain=prerouting action=mark-routing new-routing-mark=sing-box-v6 passthrough=yes dst-address-list=proxy_ipv6 comment=\"IPv6 代理目的地址策略路由\"\nadd chain=forward action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=\"IPv6 转发 TCP MSS clamp\"\nadd chain=output action=change-mss new-mss=clamp-to-pmtu passthrough=yes tcp-flags=syn protocol=tcp comment=\"IPv6 本机 TCP MSS clamp\"\n/routing rule\nadd routing-mark=sing-box-v6 action=lookup-only-in-table table=sing-box-v6 comment=\"IPv6 sing-box 策略表查询\""</script></div><p>FastTrack 保持关闭；sing-box established 保护规则位于通用 established 放行之前。脚本同时设置设备名、Asia/Shanghai 时区和 NTP。</p><h2 id=11-ipv4-防火墙>11. IPv4 防火墙</h2><p>共 19 条（input 11 条、forward 8 条）。ROS-AB 占 5 条，扫描 TCP <code>2222</code>、<code>5391</code> 并分阶段记录；不开放管理端口。FakeIP 例外放在 invalid drop 前。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros># IPv4 Filter 共 19 条（input 11 条 + forward 8 条）
+/ip firewall filter
+remove [find]
+add chain=input action=accept connection-state=established,related,untracked comment=&#34;IPv4 入站：允许已建立、相关、未跟踪连接&#34;
+add chain=input action=drop connection-state=invalid comment=&#34;IPv4 入站：丢弃无效连接&#34;
+add chain=input action=accept in-interface-list=LAN comment=&#34;IPv4 入站：允许 LAN 访问路由器&#34;
+# ROS-AB 共 5 条，仅监控 WAN 入站 TCP 新连接 2222、5391，不开放端口
+add chain=input action=drop connection-state=new protocol=tcp src-address-list=bruteforce_blacklist in-interface-list=WAN dst-port=2222,5391 comment=&#34;ROS-AB 1：丢弃黑名单源&#34;
+add chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage3 address-list=bruteforce_blacklist address-list-timeout=3d in-interface-list=WAN dst-port=2222,5391 comment=&#34;ROS-AB 2：第三级加入三天黑名单&#34;
+add chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage2 address-list=ros_ab_stage3 address-list-timeout=1h in-interface-list=WAN dst-port=2222,5391 comment=&#34;ROS-AB 3：第二级升第三级&#34;
+add chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage1 address-list=ros_ab_stage2 address-list-timeout=15m in-interface-list=WAN dst-port=2222,5391 comment=&#34;ROS-AB 4：第一级升第二级&#34;
+add chain=input action=add-src-to-address-list connection-state=new protocol=tcp address-list=ros_ab_stage1 address-list-timeout=5m in-interface-list=WAN dst-port=2222,5391 comment=&#34;ROS-AB 5：首次连接记入第一级&#34;
+add chain=input action=accept protocol=icmp in-interface-list=WAN comment=&#34;IPv4 入站：允许 WAN ICMP&#34;
+add chain=input action=drop in-interface-list=WAN comment=&#34;IPv4 入站：丢弃 WAN 其他访问&#34;
+add chain=input action=drop comment=&#34;IPv4 入站：丢弃其余所有访问&#34;
+# sing-box 已建立连接保护规则放在通用 established 规则之前
+add chain=forward action=accept connection-state=established,related,untracked src-address=10.0.0.6 comment=&#34;IPv4 转发：sing-box 发出流量不走 FastTrack&#34;
+add chain=forward action=accept connection-state=established,related,untracked dst-address=10.0.0.6 comment=&#34;IPv4 转发：发往 sing-box 的流量不走 FastTrack&#34;
+add chain=forward action=accept connection-state=established,related,untracked comment=&#34;IPv4 转发：允许已建立、相关、未跟踪连接&#34;
+add chain=forward action=accept connection-state=invalid dst-address=28.0.0.0/8 in-interface=bridge1 out-interface=bridge1 comment=&#34;IPv4 转发：例外放行 LAN 到 LAN FakeIP&#34;
+add chain=forward action=drop connection-state=invalid comment=&#34;IPv4 转发：丢弃无效连接&#34;
+add chain=forward action=accept in-interface-list=LAN comment=&#34;IPv4 转发：允许 LAN 出站&#34;
+add chain=forward action=accept connection-nat-state=dstnat in-interface-list=WAN comment=&#34;IPv4 转发：允许 WAN 的 DSTNAT&#34;
+add chain=forward action=drop comment=&#34;IPv4 转发：丢弃其余所有流量&#34;</code></pre><script class=code-source type=application/json>"# IPv4 Filter 共 19 条（input 11 条 + forward 8 条）\n/ip firewall filter\nremove [find]\nadd chain=input action=accept connection-state=established,related,untracked comment=\"IPv4 入站：允许已建立、相关、未跟踪连接\"\nadd chain=input action=drop connection-state=invalid comment=\"IPv4 入站：丢弃无效连接\"\nadd chain=input action=accept in-interface-list=LAN comment=\"IPv4 入站：允许 LAN 访问路由器\"\n# ROS-AB 共 5 条，仅监控 WAN 入站 TCP 新连接 2222、5391，不开放端口\nadd chain=input action=drop connection-state=new protocol=tcp src-address-list=bruteforce_blacklist in-interface-list=WAN dst-port=2222,5391 comment=\"ROS-AB 1：丢弃黑名单源\"\nadd chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage3 address-list=bruteforce_blacklist address-list-timeout=3d in-interface-list=WAN dst-port=2222,5391 comment=\"ROS-AB 2：第三级加入三天黑名单\"\nadd chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage2 address-list=ros_ab_stage3 address-list-timeout=1h in-interface-list=WAN dst-port=2222,5391 comment=\"ROS-AB 3：第二级升第三级\"\nadd chain=input action=add-src-to-address-list connection-state=new protocol=tcp src-address-list=ros_ab_stage1 address-list=ros_ab_stage2 address-list-timeout=15m in-interface-list=WAN dst-port=2222,5391 comment=\"ROS-AB 4：第一级升第二级\"\nadd chain=input action=add-src-to-address-list connection-state=new protocol=tcp address-list=ros_ab_stage1 address-list-timeout=5m in-interface-list=WAN dst-port=2222,5391 comment=\"ROS-AB 5：首次连接记入第一级\"\nadd chain=input action=accept protocol=icmp in-interface-list=WAN comment=\"IPv4 入站：允许 WAN ICMP\"\nadd chain=input action=drop in-interface-list=WAN comment=\"IPv4 入站：丢弃 WAN 其他访问\"\nadd chain=input action=drop comment=\"IPv4 入站：丢弃其余所有访问\"\n# sing-box 已建立连接保护规则放在通用 established 规则之前\nadd chain=forward action=accept connection-state=established,related,untracked src-address=10.0.0.6 comment=\"IPv4 转发：sing-box 发出流量不走 FastTrack\"\nadd chain=forward action=accept connection-state=established,related,untracked dst-address=10.0.0.6 comment=\"IPv4 转发：发往 sing-box 的流量不走 FastTrack\"\nadd chain=forward action=accept connection-state=established,related,untracked comment=\"IPv4 转发：允许已建立、相关、未跟踪连接\"\nadd chain=forward action=accept connection-state=invalid dst-address=28.0.0.0/8 in-interface=bridge1 out-interface=bridge1 comment=\"IPv4 转发：例外放行 LAN 到 LAN FakeIP\"\nadd chain=forward action=drop connection-state=invalid comment=\"IPv4 转发：丢弃无效连接\"\nadd chain=forward action=accept in-interface-list=LAN comment=\"IPv4 转发：允许 LAN 出站\"\nadd chain=forward action=accept connection-nat-state=dstnat in-interface-list=WAN comment=\"IPv4 转发：允许 WAN 的 DSTNAT\"\nadd chain=forward action=drop comment=\"IPv4 转发：丢弃其余所有流量\""</script></div><h2 id=12-ipv6-防火墙>12. IPv6 防火墙</h2><p>共 14 条（input 6 条、forward 8 条），保留 ICMPv6、邻居发现和 PMTUD：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ipv6 firewall filter
+remove [find]
+add chain=input action=accept connection-state=established,related,untracked comment=&#34;IPv6 入站：允许已建立、相关、未跟踪连接&#34;
+add chain=input action=drop connection-state=invalid comment=&#34;IPv6 入站：丢弃无效连接&#34;
+add chain=input action=accept protocol=icmpv6 comment=&#34;IPv6 入站：允许 ICMPv6 RA、邻居发现和 PMTUD&#34;
+add chain=input action=accept in-interface-list=LAN comment=&#34;IPv6 入站：允许 LAN 访问路由器&#34;
+add chain=input action=accept protocol=udp src-address=fe80::/10 in-interface-list=WAN dst-port=546 comment=&#34;IPv6 入站：允许 WAN 上游 DHCPv6-PD 响应&#34;
+add chain=input action=drop comment=&#34;IPv6 入站：丢弃其余所有访问&#34;
+add chain=forward action=accept connection-state=established,related,untracked src-address=fd88:1::6 comment=&#34;IPv6 转发：sing-box 发出流量不走 FastTrack&#34;
+add chain=forward action=accept connection-state=established,related,untracked dst-address=fd88:1::6 comment=&#34;IPv6 转发：发往 sing-box 的流量不走 FastTrack&#34;
+add chain=forward action=accept connection-state=established,related,untracked comment=&#34;IPv6 转发：允许已建立、相关、未跟踪连接&#34;
+add chain=forward action=accept connection-state=invalid dst-address=2001:2::/64 in-interface=bridge1 out-interface=bridge1 comment=&#34;IPv6 转发：例外放行 LAN 到 LAN FakeIP&#34;
+add chain=forward action=drop connection-state=invalid comment=&#34;IPv6 转发：丢弃无效连接&#34;
+add chain=forward action=accept protocol=icmpv6 comment=&#34;IPv6 转发：允许 ICMPv6 控制报文&#34;
+add chain=forward action=accept in-interface-list=LAN comment=&#34;IPv6 转发：允许 LAN 出站&#34;
+add chain=forward action=drop comment=&#34;IPv6 转发：丢弃其余所有流量&#34;</code></pre><script class=code-source type=application/json>"/ipv6 firewall filter\nremove [find]\nadd chain=input action=accept connection-state=established,related,untracked comment=\"IPv6 入站：允许已建立、相关、未跟踪连接\"\nadd chain=input action=drop connection-state=invalid comment=\"IPv6 入站：丢弃无效连接\"\nadd chain=input action=accept protocol=icmpv6 comment=\"IPv6 入站：允许 ICMPv6 RA、邻居发现和 PMTUD\"\nadd chain=input action=accept in-interface-list=LAN comment=\"IPv6 入站：允许 LAN 访问路由器\"\nadd chain=input action=accept protocol=udp src-address=fe80::/10 in-interface-list=WAN dst-port=546 comment=\"IPv6 入站：允许 WAN 上游 DHCPv6-PD 响应\"\nadd chain=input action=drop comment=\"IPv6 入站：丢弃其余所有访问\"\nadd chain=forward action=accept connection-state=established,related,untracked src-address=fd88:1::6 comment=\"IPv6 转发：sing-box 发出流量不走 FastTrack\"\nadd chain=forward action=accept connection-state=established,related,untracked dst-address=fd88:1::6 comment=\"IPv6 转发：发往 sing-box 的流量不走 FastTrack\"\nadd chain=forward action=accept connection-state=established,related,untracked comment=\"IPv6 转发：允许已建立、相关、未跟踪连接\"\nadd chain=forward action=accept connection-state=invalid dst-address=2001:2::/64 in-interface=bridge1 out-interface=bridge1 comment=\"IPv6 转发：例外放行 LAN 到 LAN FakeIP\"\nadd chain=forward action=drop connection-state=invalid comment=\"IPv6 转发：丢弃无效连接\"\nadd chain=forward action=accept protocol=icmpv6 comment=\"IPv6 转发：允许 ICMPv6 控制报文\"\nadd chain=forward action=accept in-interface-list=LAN comment=\"IPv6 转发：允许 LAN 出站\"\nadd chain=forward action=drop comment=\"IPv6 转发：丢弃其余所有流量\""</script></div><h2 id=13-动态-wan-nat>13. 动态 WAN NAT</h2><p>NAT 按 WAN 接口列表匹配，WAN 地址变化时不用改规则：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip firewall nat
+remove [find where chain=srcnat]
+add chain=srcnat action=masquerade src-address=10.0.0.0/24 out-interface-list=WAN comment=&#34;IPv4 NAT：仅伪装 LAN 出 WAN&#34;
+/ipv6 firewall nat
+remove [find where chain=srcnat]
+add chain=srcnat action=masquerade src-address=fd88:1::/64 out-interface-list=WAN comment=&#34;IPv6 NAT66：仅伪装 ULA 出 WAN&#34;</code></pre><script class=code-source type=application/json>"/ip firewall nat\nremove [find where chain=srcnat]\nadd chain=srcnat action=masquerade src-address=10.0.0.0/24 out-interface-list=WAN comment=\"IPv4 NAT：仅伪装 LAN 出 WAN\"\n/ipv6 firewall nat\nremove [find where chain=srcnat]\nadd chain=srcnat action=masquerade src-address=fd88:1::/64 out-interface-list=WAN comment=\"IPv6 NAT66：仅伪装 ULA 出 WAN\""</script></div><p>以上清理命令会替换全部 IPv4/IPv6 filter 和现有 <code>srcnat</code> 规则，不影响 <code>dstnat</code>。只在新设备或已备份并确认可替换时执行；有自定义规则时先另存，再逐条合并。</p><h2 id=14-限制管理服务和二层发现>14. 限制管理服务和二层发现</h2><p>导入脚本将 SSH 改为 TCP <code>2222</code>、WinBox 改为 TCP <code>5391</code>，仅允许 <code>10.0.0.0/24</code>；关闭未使用的 FTP、Telnet、Web、API 服务，将 MAC Server、MAC WinBox、邻居发现限制在 LAN，并关闭 UPnP。</p><p>LAN 连通后限制管理员来源并关闭默认账号：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/user
+set [find where name=opsadmin] address=10.0.0.0/24
+disable [find where name=admin]</code></pre><script class=code-source type=application/json>"/user\nset [find where name=opsadmin] address=10.0.0.0/24\ndisable [find where name=admin]"</script></div><p>完整管理服务及二层发现限制命令：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/ip service
+set [find where name=ssh] port=2222 address=10.0.0.0/24
+set [find where name=winbox] port=5391 address=10.0.0.0/24
+disable [find where name=ftp]
+disable [find where name=telnet]
+disable [find where name=www]
+disable [find where name=www-ssl]
+disable [find where name=api]
+disable [find where name=api-ssl]
+set [find where name=reverse-proxy] address=10.0.0.0/24
+/tool mac-server
+set allowed-interface-list=LAN
+/tool mac-server mac-winbox
+set allowed-interface-list=LAN
+/ip neighbor discovery-settings
+set discover-interface-list=LAN
+/ip upnp
+set enabled=no</code></pre><script class=code-source type=application/json>"/ip service\nset [find where name=ssh] port=2222 address=10.0.0.0/24\nset [find where name=winbox] port=5391 address=10.0.0.0/24\ndisable [find where name=ftp]\ndisable [find where name=telnet]\ndisable [find where name=www]\ndisable [find where name=www-ssl]\ndisable [find where name=api]\ndisable [find where name=api-ssl]\nset [find where name=reverse-proxy] address=10.0.0.0/24\n/tool mac-server\nset allowed-interface-list=LAN\n/tool mac-server mac-winbox\nset allowed-interface-list=LAN\n/ip neighbor discovery-settings\nset discover-interface-list=LAN\n/ip upnp\nset enabled=no"</script></div><p>用户名密码在 WinBox 中交互设置。SSH 首次连接应核对新设备 host key；不要将密码放进 SSH 命令行。</p><h2 id=15-检查配置>15. 检查配置</h2><p>导入后检查：</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/interface list member print detail
+/ip dhcp-client print detail
+/ip address print detail
+/ip dhcp-server print detail
+/ip dns print
+/ipv6 address print detail
+/ipv6 route print detail where dst-address=::/0
+/routing table print detail
+/routing rule print detail
+/ip firewall nat print detail
+/ipv6 firewall nat print detail
+/ip firewall filter print detail
+/ipv6 firewall filter print detail
+/ip firewall mangle print detail
+/ipv6 firewall mangle print detail
+/ip service print detail
+/tool mac-server print
+/tool mac-server mac-winbox print
+/ip neighbor discovery-settings print
+/ip upnp print</code></pre><script class=code-source type=application/json>"/interface list member print detail\n/ip dhcp-client print detail\n/ip address print detail\n/ip dhcp-server print detail\n/ip dns print\n/ipv6 address print detail\n/ipv6 route print detail where dst-address=::/0\n/routing table print detail\n/routing rule print detail\n/ip firewall nat print detail\n/ipv6 firewall nat print detail\n/ip firewall filter print detail\n/ipv6 firewall filter print detail\n/ip firewall mangle print detail\n/ipv6 firewall mangle print detail\n/ip service print detail\n/tool mac-server print\n/tool mac-server mac-winbox print\n/ip neighbor discovery-settings print\n/ip upnp print"</script></div><p>确认 WAN DHCP 状态为 <code>bound</code>（PPPoE 则确认 session connected），WAN IPv6 地址和 <code>::/0</code> 动态路由存在；启用 PD 时确认委派前缀及 LAN SLAAC 地址。LAN 客户端拿到正确地址和 DNS，两个 sing-box 网关可达，SSH/WinBox 来源限制为 LAN。</p><h2 id=16-备份>16. 备份</h2><p>恢复完成后保存文本导出和二进制备份。二进制文件可能含密钥和凭据，应加密保管。</p><div class=code-block><button class=copy-code type=button>复制</button><pre tabindex=0><code class=language-routeros data-lang=routeros>/export file=dualnic-routeros-final
+/system backup save name=dualnic-routeros-final</code></pre><script class=code-source type=application/json>"/export file=dualnic-routeros-final\n/system backup save name=dualnic-routeros-final"</script></div></div></article><aside class="sidebar article-sidebar"><section class="widget search-widget"><form class=search-form action=/search/ method=get><label for=article-site-search>搜索</label><div class=search-row><input id=article-site-search name=q type=search placeholder=搜索教程... autocomplete=off>
+<button type=submit aria-label=搜索>搜索</button></div></form></section><section class="widget article-latest-widget"><h2>最新文章</h2><ol class=article-latest-list><li><a href=/posts/routeros/smbox-dualnic-routeros-firewall/><img src=/posts/routeros/smbox-dualnic-routeros-firewall/assets/cover.svg alt>
+<span class=latest-rank>1</span>
+<span class=latest-title>双网口 RouterOS 小主机恢复教程：IPv4、IPv6 与 sing-box</span></a></li><li><a href=/posts/routeros/routeros-dynamic-ipv6-server-port-binding/><img src=/posts/routeros/routeros-dynamic-ipv6-server-port-binding/assets/cover.svg alt>
+<span class=latest-rank>2</span>
+<span class=latest-title>RouterOS 动态 IPv6 公网端口绑定服务器：脚本与定时更新小白教程</span></a></li><li><a href=/posts/routeros/routeros-downstream-ipv6-nat66-singbox/><img src=/posts/routeros/routeros-downstream-ipv6-nat66-singbox/assets/cover.svg alt>
+<span class=latest-rank>3</span>
+<span class=latest-title>二级 RouterOS IPv6 完整配置：RA/SLAAC、DHCPv6-PD 与防火墙</span></a></li><li><a href=/posts/ai/codex-custom-instructions-template/><img src=/posts/ai/codex-custom-instructions-template/assets/cover.svg alt>
+<span class=latest-rank>4</span>
+<span class=latest-title>Codex 自定义指令集公版：让 AI 编程助手更稳定地交付代码</span></a></li><li><a href=/posts/linux/tssh-tsshd-socks5-tmux/><img src=/posts/linux/tssh-tsshd-socks5-tmux/assets/cover.svg alt>
+<span class=latest-rank>5</span>
+<span class=latest-title>tssh+tsshd 实战：通过 SOCKS5/Hysteria2 连接 TCP 被阻断的服务器</span></a></li><li><a href=/posts/linux/tssh-install-path-tsshd-trzsz/><img src=/posts/linux/tssh-install-path-tsshd-trzsz/assets/cover.svg alt>
+<span class=latest-rank>6</span>
+<span class=latest-title>tssh 指定安装路径：trzsz / tsshd 装给普通用户还是 /usr/local/bin（Alpine 实测）</span></a></li><li><a href=/posts/docker/alpine-docker-production-security-setup/><img src=/posts/docker/alpine-docker-production-security-setup/assets/cover.svg alt>
+<span class=latest-rank>7</span>
+<span class=latest-title>Alpine 3.24 生产级 Docker 部署：普通用户从安装到加固的完整流程</span></a></li></ol></section></aside></div></main><footer class=site-footer><p>© 2026 Jay's Blog.
+专注清晰、可复现、少踩坑的电脑教程。</p></footer><script src=/js/code-copy.min.3c4506b5a479421e1f2dd29702a729f3d3ea05a9b1a77b9d6a2ffe9f83882ca2.js integrity="sha256-PEUGtaR5Qh4fLdKXAqcp89PqBamxp3udai/+n4OILKI=" defer></script><script src=/js/article-toolbar.js defer></script></body></html>
