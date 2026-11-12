@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#202b3a"/>
+      <stop offset="1" stop-color="#101721"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#63a7e8" stop-opacity=".15"/>
+      <stop offset=".5" stop-color="#63a7e8"/>
+      <stop offset="1" stop-color="#63a7e8" stop-opacity=".15"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g stroke="#354256" opacity=".35">
+    <path d="M0 150H1200M0 315H1200M0 480H1200"/>
+    <path d="M300 0V630M600 0V630M900 0V630"/>
+  </g>
+  <text x="600" y="105" text-anchor="middle" fill="#f2f6fb" font-family="sans-serif" font-size="42" font-weight="700">SSH 本地端口转发</text>
+  <text x="600" y="148" text-anchor="middle" fill="#9aacc2" font-family="sans-serif" font-size="22">通过加密隧道访问服务器上的 Web 面板</text>
+  <g transform="translate(90 232)">
+    <rect width="250" height="155" rx="14" fill="#202b3a" stroke="#42536a" stroke-width="2"/>
+    <rect x="20" y="20" width="210" height="96" rx="8" fill="#111923" stroke="#334257"/>
+    <circle cx="40" cy="40" r="5" fill="#d65d58"/>
+    <circle cx="58" cy="40" r="5" fill="#dba34a"/>
+    <circle cx="76" cy="40" r="5" fill="#64b476"/>
+    <text x="125" y="79" text-anchor="middle" fill="#82baf0" font-family="monospace" font-size="18">127.0.0.1:PORT</text>
+    <text x="125" y="143" text-anchor="middle" fill="#e2eaf4" font-family="sans-serif" font-size="22">本地浏览器</text>
+  </g>
+  <g>
+    <rect x="359" y="280" width="470" height="44" rx="22" fill="url(#line)"/>
+    <text x="594" y="270" text-anchor="middle" fill="#96c9f5" font-family="monospace" font-size="22">SSH 加密隧道 · -L</text>
+    <text x="594" y="309" text-anchor="middle" fill="#e5f1fc" font-family="monospace" font-size="17">LocalForward → 127.0.0.1:面板端口</text>
+  </g>
+  <g transform="translate(860 222)">
+    <rect width="250" height="175" rx="14" fill="#202b3a" stroke="#42536a" stroke-width="2"/>
+    <rect x="20" y="25" width="210" height="48" rx="8" fill="#111923" stroke="#334257"/>
+    <circle cx="42" cy="49" r="6" fill="#64b476"/>
+    <text x="62" y="55" fill="#c5d3e3" font-family="monospace" font-size="17">sshd</text>
+    <rect x="20" y="88" width="210" height="55" rx="8" fill="#111923" stroke="#334257"/>
+    <text x="125" y="112" text-anchor="middle" fill="#c5d3e3" font-family="monospace" font-size="15">127.0.0.1:PORT</text>
+    <text x="125" y="134" text-anchor="middle" fill="#8fa3bc" font-family="sans-serif" font-size="14">Web 面板</text>
+    <text x="125" y="165" text-anchor="middle" fill="#e2eaf4" font-family="sans-serif" font-size="22">服务器</text>
+  </g>
+  <rect x="90" y="492" width="1020" height="68" rx="12" fill="#192536" stroke="#34455b"/>
+  <text x="600" y="535" text-anchor="middle" fill="#a9c8e7" font-family="monospace" font-size="20">sshd_config：AllowTcpForwarding yes</text>
+</svg>
