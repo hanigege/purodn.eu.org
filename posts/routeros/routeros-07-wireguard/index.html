@@ -6,7 +6,7 @@
 <a href=/categories/freebsd/>FreeBSD</a>
 <a href=/categories/docker/>Docker</a></nav></div></header><main><div class=article-layout><article class=article><header class=article-header><div class=post-meta><span>Router</span>
 <time datetime=2025-09-01>2025年9月1日</time>
-<time class=updated datetime=2026-11-15>更新于 2026年11月15日</time></div><h1>07 RouterOS 配置 WireGuard</h1><p>RouterOS WireGuard 。</p></header><img class=article-cover src=/posts/routeros/routeros-07-wireguard/assets/routeros-07.svg alt><div class=article-content><h2 id=本文介绍如何在routeros中配置wireguard包括两个ros之间通过wireguard异地组网>本文介绍如何在RouterOS中配置wireguard，包括两个ROS之间通过wireguard异地组网</h2><h3 id=1-客户端接入家庭局域网>1. 客户端接入家庭局域网</h3><ul><li>添加wireguard。名字（Name）及监听端口（Listen Port）可自定义
+<time class=updated datetime=2026-11-12>更新于 2026年11月12日</time></div><h1>07 RouterOS 配置 WireGuard</h1><p>RouterOS WireGuard 。</p></header><img class=article-cover src=/posts/routeros/routeros-07-wireguard/assets/routeros-07.svg alt><div class=article-content><h2 id=本文介绍如何在routeros中配置wireguard包括两个ros之间通过wireguard异地组网>本文介绍如何在RouterOS中配置wireguard，包括两个ROS之间通过wireguard异地组网</h2><h3 id=1-客户端接入家庭局域网>1. 客户端接入家庭局域网</h3><ul><li>添加wireguard。名字（Name）及监听端口（Listen Port）可自定义
 <img src=assets/routeros-07-wireguard-07.png alt=1.png></li><li>为wireguard接口配置ip。网段不可与现有局域网网段相同。以 10.20.30.1/24 为例
 <img src=assets/routeros-07-wireguard-08.png alt=2.png></li><li>添加客户端（peer）配置
 <img src=assets/routeros-07-wireguard-09.png alt=3.png></li><li>双击建好的peer1，拉到最下面，使用客户端（如ios的wireguard）扫描二维码导入配置

@@ -5,8 +5,7 @@
 <a href=/categories/linux/>Linux</a>
 <a href=/categories/freebsd/>FreeBSD</a>
 <a href=/categories/docker/>Docker</a></nav></div></header><main><div class=article-layout><article class=article><header class=article-header><div class=post-meta><span>Linux</span>
-<time datetime=2026-05-24>2026年5月24日</time>
-<time class=updated datetime=2026-11-15>更新于 2026年11月15日</time></div><h1>手动申请域名ssl证书acme.sh脚本申请cloudflare的证书 支持泛域名</h1></header><img class=article-cover src=/posts/linux/manual-domain-ssl-cert/assets/cover.svg alt><div class=article-content><p>acme.sh脚本申请cloudflare的证书 支持泛域名</p><p>前言：<code>acme.sh</code>是一个非常好用的用于申请证书的脚本，它开源在Github，它极大地降低了申请证书的难度，支持使用cloudflare api等多种api来申请证书。</p><p>本文主要介绍使用此脚本来申请 ssl 证书，给你的http请求加把锁，具体可以用来cloudflare api介绍。</p><h2 id=准备条件>准备条件：</h2><p>一台被分配了公网IP的主机</p><p>一个域名(建议购买收费域名)</p><p>电脑ssh客户端</p><p>能解决个体的问题</p><h2 id=一全球api申请证书>一、全球API申请证书</h2><p>1.1、安装脚本文件
+<time datetime=2026-05-24>2026年5月24日</time></div><h1>手动申请域名ssl证书acme.sh脚本申请cloudflare的证书 支持泛域名</h1></header><img class=article-cover src=/posts/linux/manual-domain-ssl-cert/assets/cover.svg alt><div class=article-content><p>acme.sh脚本申请cloudflare的证书 支持泛域名</p><p>前言：<code>acme.sh</code>是一个非常好用的用于申请证书的脚本，它开源在Github，它极大地降低了申请证书的难度，支持使用cloudflare api等多种api来申请证书。</p><p>本文主要介绍使用此脚本来申请 ssl 证书，给你的http请求加把锁，具体可以用来cloudflare api介绍。</p><h2 id=准备条件>准备条件：</h2><p>一台被分配了公网IP的主机</p><p>一个域名(建议购买收费域名)</p><p>电脑ssh客户端</p><p>能解决个体的问题</p><h2 id=一全球api申请证书>一、全球API申请证书</h2><p>1.1、安装脚本文件
 以root用户ssh连接到主机，使用下面的命令安装脚本：</p><div class=code-block><button class=copy-code type=button>复制</button><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>apt update <span style=color:#f92672>&amp;&amp;</span> apt -y install socat //更新源并安装socat
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>wget -qO- get.acme.sh | bash //安装此脚本
