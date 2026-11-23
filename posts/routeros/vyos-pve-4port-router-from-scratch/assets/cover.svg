@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101923"/>
+      <stop offset="0.58" stop-color="#17445a"/>
+      <stop offset="1" stop-color="#4c8f86"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <g fill="none" stroke="#c7f9e8" stroke-width="4" opacity="0.65">
+    <path d="M640 246v82M640 328H270v76M640 328H505v76M640 328H775v76M640 328h370v76"/>
+    <rect x="170" y="404" width="200" height="82" rx="14"/>
+    <rect x="405" y="404" width="200" height="82" rx="14"/>
+    <rect x="675" y="404" width="200" height="82" rx="14"/>
+    <rect x="910" y="404" width="200" height="82" rx="14"/>
+  </g>
+  <g fill="#eafff6" font-family="Menlo, monospace" text-anchor="middle">
+    <text x="270" y="455" font-size="30">LAN 1</text>
+    <text x="505" y="455" font-size="30">LAN 2</text>
+    <text x="775" y="455" font-size="30">LAN 3</text>
+    <text x="1010" y="455" font-size="30">WAN</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="452" y="126" width="376" height="122" rx="22" fill="#0d171e" stroke="#a7f3d0" stroke-width="3"/>
+    <text x="640" y="203" fill="#fff" font-family="Menlo, monospace" font-size="58" text-anchor="middle">VyOS</text>
+  </g>
+  <text x="640" y="590" fill="#fff" font-family="Arial, 'Noto Sans CJK SC', sans-serif" font-size="42" font-weight="700" text-anchor="middle">PVE 四网口软路由从零安装</text>
+  <text x="640" y="642" fill="#d8fff0" font-family="Menlo, monospace" font-size="24" text-anchor="middle">PPPoE · DHCP · FakeIP · Firewall</text>
+</svg>
