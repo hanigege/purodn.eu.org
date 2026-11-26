@@ -1,5 +1,6 @@
 <!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>安全加固 | Jay's Blog</title>
-<meta name=description content="软路由、Linux、FreeBSD、Docker、AI 相关的部署记录、教程和踩坑笔记。"><link rel=icon href=/favicon/favicon.ico sizes=32x32><link rel=icon type=image/svg+xml href=/favicon/favicon.svg><link rel=apple-touch-icon href=/favicon/apple-touch-icon.png><meta name=theme-color content="#222831"><link rel=stylesheet href=/css/main.min.2f3a83d5cdedbd189c1afc4a6678dd2107f47cf317e0850a021025c35dad1cf8.css integrity="sha256-LzqD1c3tvRicGvxKZnjdIQf0fPMX4IUKAhAlw12tHPg="></head><body><header class=site-header><div class=header-inner><a class=brand href=/ aria-label="Jay's Blog 首页"><img class=brand-sign src=/images/jays-blog-brand.png alt="Jay's Blog"></a><nav class=site-nav aria-label=主导航><a href=/>首页</a>
+<meta name=description content="软路由、Linux、FreeBSD、Docker、AI 相关的部署记录、教程和踩坑笔记。"><link rel=icon href=/favicon/favicon.ico sizes=32x32><link rel=icon type=image/svg+xml href=/favicon/favicon.svg><link rel=apple-touch-icon href=/favicon/apple-touch-icon.png><meta name=theme-color content="#222831"><link rel=stylesheet href=/css/main.min.2f2d9599bc1d8310bbd2a309b4e646873ec42ec891cba229138ec313d0f71f57.css integrity="sha256-Ly2VmbwdgxC70qMJtOZGhz7ELsiRy6IpE47DE9D3H1c="></head><body><header class=site-header><div class=header-inner><a class=brand href=/ aria-label="Jay's Blog 首页"><img class=brand-sign src=/images/jays-blog-brand.png alt="Jay's Blog"></a><form class=header-search action=/search/ method=get role=search><input id=header-search name=q type=search placeholder=搜索教程... autocomplete=off aria-label=站内搜索>
+<button type=submit>搜索</button></form><nav class=site-nav aria-label=主导航><a href=/>首页</a>
 <a href=/categories/ai/>AI</a>
 <a href=/categories/router/>Router</a>
 <a href=/categories/linux/>Linux</a>
@@ -8,15 +9,17 @@
 <span class=card-badges></span></a><div class=post-body><h2><a href=/posts/docker/alpine-docker-production-security-setup/>Alpine 3.24 生产级 Docker 部署：普通用户从安装到加固的完整流程</a></h2><div class=post-meta><span>Docker</span>
 <time datetime=2026-10-24>2026年10月24日</time></div></div></article><article class=post-card><a class=post-thumb href=/posts/ai/openclaw-production-docker-install/ aria-label="OpenClaw 生产级 Docker 安装教程：避坑、加固、备份与验证"><img src=/posts/ai/openclaw-production-docker-install/assets/cover.svg alt>
 <span class=card-badges></span></a><div class=post-body><h2><a href=/posts/ai/openclaw-production-docker-install/>OpenClaw 生产级 Docker 安装教程：避坑、加固、备份与验证</a></h2><div class=post-meta><span>AI</span>
-<time datetime=2026-05-30>2026年5月30日</time></div></div></article></div></section><aside class=sidebar><section class="widget search-widget"><form class=search-form action=/search/ method=get><label for=site-search>搜索</label><div class=search-row><input id=site-search name=q type=search placeholder=搜索教程... autocomplete=off>
-<button type=submit aria-label=搜索>搜索</button></div></form></section><section class=widget><h2>近期文章</h2><ul class=compact-list><li><a href=/posts/linux/headscale-debian13-ros-subnet-router/><span class=compact-rank>1</span>
+<time datetime=2026-05-30>2026年5月30日</time></div></div></article></div></section><aside class=sidebar><section class=widget><h2>近期文章</h2><ul class=compact-list><li><a href=/posts/linux/headscale-debian13-ros-subnet-router/><span class=compact-rank>1</span>
 <span>Debian 13 部署 Headscale：RouterOS 端口转发与内网子网路由完整教程</span></a></li><li><a href=/posts/routeros/vyos-pve-4port-router-from-scratch/><span class=compact-rank>2</span>
 <span>PVE 从零安装四网口 VyOS 软路由：PPPoE、DHCP、FakeIP 与安全防火墙</span></a></li><li><a href=/posts/linux/ssh-local-port-forwarding-web-panel/><span class=compact-rank>3</span>
 <span>SSH 本地端口转发访问 Web 面板</span></a></li><li><a href=/posts/routeros/smbox-dualnic-routeros-firewall/><span class=compact-rank>4</span>
 <span>双网口 RouterOS 小主机恢复教程：IPv4、IPv6 与 sing-box</span></a></li><li><a href=/posts/routeros/routeros-dynamic-ipv6-server-port-binding/><span class=compact-rank>5</span>
 <span>RouterOS 动态 IPv6 公网端口绑定服务器：脚本与定时更新小白教程</span></a></li><li><a href=/posts/routeros/routeros-downstream-ipv6-nat66-singbox/><span class=compact-rank>6</span>
 <span>二级 RouterOS IPv6 完整配置：RA/SLAAC、DHCPv6-PD 与防火墙</span></a></li><li><a href=/posts/linux/proxmox-debian13-cloud-image-template/><span class=compact-rank>7</span>
-<span>在 PVE 上用 Debian 13 官方 Cloud Image 创建模板</span></a></li></ul></section><section class=widget><h2>分类</h2><div class=tag-cloud><a href=/categories/linux/>Linux <span>60</span></a>
+<span>在 PVE 上用 Debian 13 官方 Cloud Image 创建模板</span></a></li><li><a href=/posts/ai/codex-custom-instructions-template/><span class=compact-rank>8</span>
+<span>Codex 自定义指令集公版：让 AI 编程助手更稳定地交付代码</span></a></li><li><a href=/posts/linux/traefik-beginners-guide/><span class=compact-rank>9</span>
+<span>Traefik 从安装到实战：Docker 反向代理新手教程</span></a></li><li><a href=/posts/linux/tssh-tsshd-socks5-tmux/><span class=compact-rank>10</span>
+<span>tssh+tsshd 实战：通过 SOCKS5/Hysteria2 连接 TCP 被阻断的服务器</span></a></li></ul></section><section class=widget><h2>分类</h2><div class=tag-cloud><a href=/categories/linux/>Linux <span>60</span></a>
 <a href=/categories/ai/>AI <span>26</span></a>
 <a href=/categories/router/>Router <span>25</span></a>
 <a href=/categories/docker/>Docker <span>23</span></a>
