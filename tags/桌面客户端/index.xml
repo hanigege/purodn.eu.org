@@ -2,4 +2,4 @@
 服务端必须先配，不配连不上。这篇把两种连法的完整步骤写出来，照着做就能通。
 💡 两种方式选哪个
 SSH 隧道：客户端在本地开个隧道钻进去，Hermes 端口只监听 127.0.0.1，外面扫不到。推荐。 HTTP 直连：直接填 http://&amp;lt;内网IP&amp;gt;:8642 加 token。少一层，但端口对整个内网敞开，靠 token 挡。 两种可以同时开着，互不影响。本文先把 SSH 走通（第 1～5 步），HTTP 是在此基础上改一个值（第 6 步）。
-一、要准备什么 东西 说明 怎么查 服务端内网 IP 跑 Hermes 那台机器的地址 在服务端运行 ip -4 addr show | grep inet 服务端登录用户名 Hermes 是用哪个账号跑的 在服务端运行 whoami Hermes 端口 API server 端口，默认 8642 本文一律用 8642 客户端公钥 Mac 上的 SSH 公钥 在 Mac 运行 cat ~/.</description></item></channel></rss>
+一、要准备什么# 东西 说明 怎么查 服务端内网 IP 跑 Hermes 那台机器的地址 在服务端运行 ip -4 addr show | grep inet 服务端登录用户名 Hermes 是用哪个账号跑的 在服务端运行 whoami Hermes 端口 API server 端口，默认 8642 本文一律用 8642 客户端公钥 Mac 上的 SSH 公钥 在 Mac 运行 cat ~/.</description></item></channel></rss>

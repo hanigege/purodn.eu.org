@@ -126,10 +126,10 @@
   });
 
   upButton.addEventListener("click", function () {
-    var target = Math.max(0, article.getBoundingClientRect().top + window.scrollY - 24);
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({
-      top: target,
-      behavior: "smooth"
+      top: 0,
+      behavior: reduceMotion ? "auto" : "smooth"
     });
   });
 

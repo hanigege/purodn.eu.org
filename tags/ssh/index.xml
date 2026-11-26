@@ -1,79 +1,79 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>SSH on Jay's Blog</title><link>https://purodn.eu.org/tags/ssh/</link><description>Recent content in SSH on Jay's Blog</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Wed, 25 Nov 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://purodn.eu.org/tags/ssh/index.xml" rel="self" type="application/rss+xml"/><item><title>SSH 本地端口转发访问 Web 面板</title><link>https://purodn.eu.org/posts/linux/ssh-local-port-forwarding-web-panel/</link><pubDate>Thu, 12 Nov 2026 20:59:46 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/ssh-local-port-forwarding-web-panel/</guid><description>以下示例使用占位符，请替换为自己的服务器地址、用户名、SSH 端口、面板端口和私钥路径。
-1. SSH 本地端口转发 在本地电脑执行：
+1. SSH 本地端口转发# 在本地电脑执行：
 复制ssh -i /path/to/private_key -p SSH端口 -N \ -L 127.0.0.1:本地端口:127.0.0.1:面板端口 \ 用户名@服务器地址 保持终端窗口开启，然后在本机浏览器访问 http://127.0.0.1:本地端口。-N 表示只建立隧道，不打开远程 shell。
--L 中两个端口的含义 格式为 -L [本地监听地址:]本地端口:目标地址:目标端口。在上面的命令中：
+-L 中两个端口的含义# 格式为 -L [本地监听地址:]本地端口:目标地址:目标端口。在上面的命令中：
 本地端口 是本机 SSH 客户端监听的端口；浏览器访问 http://127.0.0.1:本地端口。如果本地端口被占用，可以换成其它空闲端口，并同步修改浏览器地址。 目标地址:面板端口 是从服务器一侧访问的目标。127.0.0.1 指服务器自身，面板端口 必须与面板实际监听端口一致。 两个端口可以相同，也可以不同。流量路径是：本机浏览器 → 本地端口 → SSH 加密隧道 → 服务器的 127.0.0.1:面板端口。
-2. 通过 SOCKS5 代理连接 复制ssh -o &amp;#39;ProxyCommand=nc -x 代理地址:代理端口 -X 5 %h %p&amp;#39; \ -i /path/to/private_key -p SSH端口 -N \ -L 127.0.0.1:本地端口:127.0.0.1:面板端口 \ 用户名@服务器地址 浏览器代理规则需将 127.0.0.1 和 localhost 设为直连。</description></item><item><title>tssh+tsshd 实战：通过 SOCKS5/Hysteria2 连接 TCP 被阻断的服务器</title><link>https://purodn.eu.org/posts/linux/tssh-tsshd-socks5-tmux/</link><pubDate>Wed, 28 Oct 2026 00:00:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tssh-tsshd-socks5-tmux/</guid><description>有些 VPS 的 22 端口并不是服务器本机防火墙拒绝，而是公网链路上的 TCP 被阻断。这时直接运行 ssh root@服务器IP 往往只会超时；如果服务器还保留着网页 VNC，就可以先从 VNC 进入系统，安装 tsshd，再让 tssh 把 SSH 会话切换到更适合不稳定网络的传输层。
+2. 通过 SOCKS5 代理连接# 复制ssh -o &amp;#39;ProxyCommand=nc -x 代理地址:代理端口 -X 5 %h %p&amp;#39; \ -i /path/to/private_key -p SSH端口 -N \ -L 127.0.0.1:本地端口:127.0.0.1:面板端口 \ 用户名@服务器地址 浏览器代理规则需将 127.0.0.1 和 localhost 设为直连。</description></item><item><title>tssh+tsshd 实战：通过 SOCKS5/Hysteria2 连接 TCP 被阻断的服务器</title><link>https://purodn.eu.org/posts/linux/tssh-tsshd-socks5-tmux/</link><pubDate>Wed, 28 Oct 2026 00:00:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tssh-tsshd-socks5-tmux/</guid><description>有些 VPS 的 22 端口并不是服务器本机防火墙拒绝，而是公网链路上的 TCP 被阻断。这时直接运行 ssh root@服务器IP 往往只会超时；如果服务器还保留着网页 VNC，就可以先从 VNC 进入系统，安装 tsshd，再让 tssh 把 SSH 会话切换到更适合不稳定网络的传输层。
 本文记录一套适合小白照着做的方案：
 复制Mac │ SSH 初始连接：通过 ProxyCommand ▼ 内网 sing-box SOCKS5 │ Hysteria2 出站 ▼ 远程服务器：备用 SSH 端口 2222 │ tssh 启动 tsshd ▼ tmux 持久终端 这套方案有一个关键认识：tssh --udp 仍然需要先完成一次普通 SSH 登录，然后才启动远端 tsshd。如果本机没有任何可用的 TCP 引导路径，单独安装 tsshd 并不能让它凭空绕过 TCP 阻断。官方文档也明确描述了这个启动顺序：tsshd 工作原理。
-一、先判断问题在哪里 先在客户端测试普通 SSH：
+一、先判断问题在哪里# 先在客户端测试普通 SSH：
 复制ssh -p 22 root@203.0.113.10 如果提示 Connection refused，通常是目标端口没有服务监听；如果长时间 i/o timeout，更像是上游链路、云防火墙或系统防火墙丢弃了数据包。不要只测试 22，也测试一个确定开放的 HTTPS 端口：</description></item><item><title>tssh 指定安装路径：trzsz / tsshd 装给普通用户还是 /usr/local/bin（Alpine 实测）</title><link>https://purodn.eu.org/posts/linux/tssh-install-path-tsshd-trzsz/</link><pubDate>Sat, 24 Oct 2026 19:58:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tssh-install-path-tsshd-trzsz/</guid><description>💡 一句话结论：tssh --install-path 改的是服务器上的安装目录，不是本地目录。只想「给自己这个普通用户用、不碰 root」，就写 --install-path '~/.local/bin'（单引号不能省）；想把 trz / tsz / tsshd 放进 /usr/local/bin，tssh 本身没有 sudo 能力，正确姿势是「先装到用户目录 → 再 doas mv」。
 本文覆盖四件事：方案一（普通用户安装，无需 root）、方案二（全系统 /usr/local/bin，含实测可行做法）、Alpine 用 root 直接下载静态包（amd64 / arm64 都给了命令）、Alpine 排错（什么时候才真需要 gcompat）。顺带把 tsshd 的 UDP 模式、trz/tsz 传文件、密码加密、DNS SRV 这些常用参数一次说清。所有命令都在真实的 Alpine 服务器上跑过（x86_64 与 aarch64 各一台），末尾有「实战验证记录」可对查。
-先把参数分清楚 真实 tssh --help（v0.1.26）里跟安装有关的部分：
+先把参数分清楚# 真实 tssh --help（v0.1.26）里跟安装有关的部分：
 复制 --install-trzsz [tools] install trzsz to the remote server --install-tsshd [tools] install tsshd to the remote server --install-path path [tools] install path, default: &amp;#39;~/.</description></item><item><title>tssh 小白实操：安装、添加站点、tmux 批量登录、密码/SSH 密钥/UDP 登录、传文件与升级</title><link>https://purodn.eu.org/posts/linux/tssh-quickstart-guide/</link><pubDate>Tue, 18 Aug 2026 00:05:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tssh-quickstart-guide/</guid><description>本文以 tssh v0.1.27 为例，按“安装客户端 → 添加站点 → 密码/SSH 密钥登录 → tmux 批量登录 → UDP → 传文件 → 升级”的顺序操作。示例中的域名、用户名和密文均为占位值，使用前按自己的环境替换。
-为什么要用 tssh tssh（全名 trzsz-ssh）是一个完全兼容 OpenSSH 的 SSH 客户端，服务器多了以后它能帮你：
+为什么要用 tssh# tssh（全名 trzsz-ssh）是一个完全兼容 OpenSSH 的 SSH 客户端，服务器多了以后它能帮你：
 不用记 IP 和别名：运行 tssh 直接弹出服务器列表，输入关键字搜索，回车登录。 配合 tmux 批量登录：在 tmux 里一次选多台机器，分屏 / 新窗口一起登录。 记住密码：只能密码登录的服务器，把密码加密存进配置，以后免输。 UDP 模式弱网不掉线：配合服务器端的 tsshd，切换网络、休眠唤醒都不掉线（类似 mosh）。 内置传文件：配合服务器端的 trzsz，一条命令上传下载，不用再开 SFTP 窗口。 本文覆盖：安装（Ubuntu / Debian / macOS / Alpine）→ 添加站点 → 密码登录 → SSH 密钥登录 → tmux 批量登录 → UDP → 传文件 → 升级，按顺序操作。</description></item><item><title>tssh 下使用 scp 和 sftp：传文件小白完整指南</title><link>https://purodn.eu.org/posts/linux/tssh-scp-sftp-guide/</link><pubDate>Mon, 17 Aug 2026 23:27:05 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tssh-scp-sftp-guide/</guid><description>💡 本文目标：你已经会用 tssh（trzsz-ssh）登录服务器，现在想把文件传上去、拉下来。照本文做完，你会得到两个好用的命令 tscp 和 tsftp，传文件不用再敲密码、不用再开第二个终端。
 tssh（trzsz-ssh）是完全兼容 OpenSSH 的 SSH 客户端。但系统自带的 scp、sftp 默认只会找 ssh 程序，不认识 tssh。本文的核心就一招：给 scp / sftp 加 -S tssh 参数，让它们把传输工作交给 tssh 去做。
 这样就能继承 tssh 的高级特性：
-自动填充密码：你在 tssh 里记住过密码的服务器，scp / sftp 传文件时也不用再手动输密码。 UDP 通道传输：如果目标服务器装了 tsshd 并启用了 UDP 模式，文件传输会自动走加密 UDP 通道，弱网、高延迟下更稳定。 兼容 ~/.ssh/config 别名：tssh 认识的 Host 别名（比如本文的 vmsb），scp / sftp 一样认识。 第 1 步：安装 tssh ⚠️ 最容易抄错的值：macOS 上 Homebrew 的包名是 trzsz-ssh，不是 tssh。直接 brew install tssh 会报 Error: No available formula with the name &amp;quot;tssh&amp;quot;。官方文档原话：「Homebrew 中命名为 trzsz-ssh，其他地方通常命名为 tssh」。</description></item><item><title>Mac 终端连接 Ubuntu 使用 Micro 编辑器完整教程：安装、配置、插件与乱码解决</title><link>https://purodn.eu.org/posts/linux/ubuntu-micro-editor-mac-terminal-guide/</link><pubDate>Sun, 02 Aug 2026 12:25:04 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/ubuntu-micro-editor-mac-terminal-guide/</guid><description>在 Mac 上通过终端连接远端 Ubuntu 使用 Micro 编辑器是一个非常棒的选择。Micro 的设计初衷就是为了让习惯 GUI（如 VS Code）的用户在终端里也能拥有几乎一致的操作体验。
+自动填充密码：你在 tssh 里记住过密码的服务器，scp / sftp 传文件时也不用再手动输密码。 UDP 通道传输：如果目标服务器装了 tsshd 并启用了 UDP 模式，文件传输会自动走加密 UDP 通道，弱网、高延迟下更稳定。 兼容 ~/.ssh/config 别名：tssh 认识的 Host 别名（比如本文的 vmsb），scp / sftp 一样认识。 第 1 步：安装 tssh# ⚠️ 最容易抄错的值：macOS 上 Homebrew 的包名是 trzsz-ssh，不是 tssh。直接 brew install tssh 会报 Error: No available formula with the name &amp;quot;tssh&amp;quot;。官方文档原话：「Homebrew 中命名为 trzsz-ssh，其他地方通常命名为 tssh」。</description></item><item><title>Mac 终端连接 Ubuntu 使用 Micro 编辑器完整教程：安装、配置、插件与乱码解决</title><link>https://purodn.eu.org/posts/linux/ubuntu-micro-editor-mac-terminal-guide/</link><pubDate>Sun, 02 Aug 2026 12:25:04 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/ubuntu-micro-editor-mac-terminal-guide/</guid><description>在 Mac 上通过终端连接远端 Ubuntu 使用 Micro 编辑器是一个非常棒的选择。Micro 的设计初衷就是为了让习惯 GUI（如 VS Code）的用户在终端里也能拥有几乎一致的操作体验。
 以下是一套完整的从安装到深度优化的教程，旨在让你的 Micro 像原生编辑器一样好用。
-1. 安装（在 Ubuntu 远端） 连接到远端 Ubuntu 后，建议使用官方脚本或 apt 安装：
+1. 安装（在 Ubuntu 远端）# 连接到远端 Ubuntu 后，建议使用官方脚本或 apt 安装：
 官方脚本（推荐，版本最新）：
 复制curl https://getmic.ro | bash sudo mv micro /usr/local/bin/ 或者使用 APT：
-复制sudo apt update &amp;amp;&amp;amp; sudo apt install micro 2. 核心配置：让它更好用 Micro 的配置文件位于 ~/.config/micro/settings.json。你可以直接在 Micro 中按 Ctrl+E（进入命令模式）然后输入 set &amp;lt;选项名&amp;gt; &amp;lt;值&amp;gt; 来修改，或者手动编辑配置文件。
-推荐开启的设置 输入：
+复制sudo apt update &amp;amp;&amp;amp; sudo apt install micro 2. 核心配置：让它更好用# Micro 的配置文件位于 ~/.config/micro/settings.json。你可以直接在 Micro 中按 Ctrl+E（进入命令模式）然后输入 set &amp;lt;选项名&amp;gt; &amp;lt;值&amp;gt; 来修改，或者手动编辑配置文件。
+推荐开启的设置# 输入：
 复制micro ~/.config/micro/settings.json 写入以下内容：
 复制{ &amp;#34;colorscheme&amp;#34;: &amp;#34;simple&amp;#34;, &amp;#34;mouse&amp;#34;: true, &amp;#34;saveundo&amp;#34;: true, &amp;#34;tabsize&amp;#34;: 4, &amp;#34;tabstospaces&amp;#34;: true, &amp;#34;autoindent&amp;#34;: true, &amp;#34;cursorline&amp;#34;: true, &amp;#34;ruler&amp;#34;: true, &amp;#34;clipboard&amp;#34;: &amp;#34;terminal&amp;#34; } clipboard: terminal：这是最关键的一步！它通过 OSC 52 协议让远端 Ubuntu 的剪贴板与你的 Mac 物理机共享。 mouse: true：开启鼠标支持。你可以直接用鼠标点击移动光标、滚动页面甚至拖拽选中代码。 3.</description></item><item><title>Hermes One 桌面客户端远程连接 Hermes Agent：SSH 隧道与 HTTP 直连完整配置</title><link>https://purodn.eu.org/posts/ai/hermes-desktop-remote-connect/</link><pubDate>Sat, 01 Aug 2026 19:34:24 +0800</pubDate><guid>https://purodn.eu.org/posts/ai/hermes-desktop-remote-connect/</guid><description>Hermes Agent 跑在一台内网 Linux 虚拟机上，人在 MacBook Air 前面。想用桌面客户端 Hermes One 连过去聊天，客户端启动就问你要 SSH 地址或者 HTTP 地址加 token。
 服务端必须先配，不配连不上。这篇把两种连法的完整步骤写出来，照着做就能通。
 💡 两种方式选哪个
 SSH 隧道：客户端在本地开个隧道钻进去，Hermes 端口只监听 127.0.0.1，外面扫不到。推荐。 HTTP 直连：直接填 http://&amp;lt;内网IP&amp;gt;:8642 加 token。少一层，但端口对整个内网敞开，靠 token 挡。 两种可以同时开着，互不影响。本文先把 SSH 走通（第 1～5 步），HTTP 是在此基础上改一个值（第 6 步）。
-一、要准备什么 东西 说明 怎么查 服务端内网 IP 跑 Hermes 那台机器的地址 在服务端运行 ip -4 addr show | grep inet 服务端登录用户名 Hermes 是用哪个账号跑的 在服务端运行 whoami Hermes 端口 API server 端口，默认 8642 本文一律用 8642 客户端公钥 Mac 上的 SSH 公钥 在 Mac 运行 cat ~/.</description></item><item><title>Alpine 3.23 重装后普通用户没有主目录，导致 Neovim 和 SSH 密钥脚本报错的修复记录</title><link>https://purodn.eu.org/posts/linux/alpine-reinstall-user-home-nvim-ssh/</link><pubDate>Mon, 08 Jun 2026 09:28:46 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/alpine-reinstall-user-home-nvim-ssh/</guid><description>这次是在 VPS 上通过 bin456789/reinstall 一键 DD 了新的 Alpine 3.23 系统。重装过程中选择创建普通用户 jay，也配置了登录密码。系统起来以后，确实可以用 jay 这个普通用户 SSH 登录。
+一、要准备什么# 东西 说明 怎么查 服务端内网 IP 跑 Hermes 那台机器的地址 在服务端运行 ip -4 addr show | grep inet 服务端登录用户名 Hermes 是用哪个账号跑的 在服务端运行 whoami Hermes 端口 API server 端口，默认 8642 本文一律用 8642 客户端公钥 Mac 上的 SSH 公钥 在 Mac 运行 cat ~/.</description></item><item><title>Alpine 3.23 重装后普通用户没有主目录，导致 Neovim 和 SSH 密钥脚本报错的修复记录</title><link>https://purodn.eu.org/posts/linux/alpine-reinstall-user-home-nvim-ssh/</link><pubDate>Mon, 08 Jun 2026 09:28:46 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/alpine-reinstall-user-home-nvim-ssh/</guid><description>这次是在 VPS 上通过 bin456789/reinstall 一键 DD 了新的 Alpine 3.23 系统。重装过程中选择创建普通用户 jay，也配置了登录密码。系统起来以后，确实可以用 jay 这个普通用户 SSH 登录。
 问题出在登录后才发现：/home/ 下面没有正常的 jay 主目录，或者主目录存在但归属权限不对。后面切到 root 管理环境以后安装了基础工具：
 复制apk update apk upgrade apk add curl nano nvim 然后再回到普通用户使用 nvim 编辑脚本，就会遇到 Neovim 创建运行目录失败的问题。这个坑很隐蔽，因为 SSH 登录本身能成功，容易误以为普通用户环境已经完整初始化了。
-现象 普通用户 jay 执行：
+现象# 普通用户 jay 执行：
 复制nvim alpine_user_ssh.sh Neovim 报错大意是无法创建 /home/jay/.local 下面的目录，或者提示权限被拒。
 这类报错说明重点不在 Neovim 本身，而在用户主目录：
-/home/jay 根本不存在； /home/jay 存在，但所有者是 root； $HOME 指向 /home/jay，但普通用户无法在里面创建 .local、.cache、.config； 后续 .ssh/authorized_keys、Neovim 缓存和配置目录都会一起受影响。 先确认问题 先用普通用户登录后检查当前身份和主目录变量：
+/home/jay 根本不存在； /home/jay 存在，但所有者是 root； $HOME 指向 /home/jay，但普通用户无法在里面创建 .local、.cache、.config； 后续 .ssh/authorized_keys、Neovim 缓存和配置目录都会一起受影响。 先确认问题# 先用普通用户登录后检查当前身份和主目录变量：
 复制whoami echo &amp;#34;$HOME&amp;#34; pwd id 正常情况下，whoami 应该输出：</description></item><item><title>Linux 临时开启 root 密码 SSH 登录</title><link>https://purodn.eu.org/posts/linux/enable-root-ssh-password-login/</link><pubDate>Mon, 25 May 2026 14:08:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/enable-root-ssh-password-login/</guid><description>有些新装的 VPS 或云主机默认禁止 root 密码登录，只允许普通用户配合 sudo 或 SSH key。临时迁移、救急维护、批量初始化时，可以短时间打开 root 密码登录；用完后建议再关回去，或者至少换成高强度密码并限制来源 IP。
 本文以 Debian、Ubuntu 等使用 OpenSSH 的 Linux 系统为例。
-1. 设置 root 密码 先把 root 密码写入系统。把 YOUR_STRONG_PASSWORD 换成自己的强密码：
+1. 设置 root 密码# 先把 root 密码写入系统。把 YOUR_STRONG_PASSWORD 换成自己的强密码：
 复制echo &amp;#39;root:YOUR_STRONG_PASSWORD&amp;#39; | sudo chpasswd 如果密码里有空格、!、$ 等特殊字符，一定要用单引号包起来，避免被 shell 解释。
 例如密码是 change passwd，命令应写成：
-复制echo &amp;#39;root:change passwd&amp;#39; | sudo chpasswd 2. 开启 root SSH 登录 修改 OpenSSH 服务端配置：
+复制echo &amp;#39;root:change passwd&amp;#39; | sudo chpasswd 2. 开启 root SSH 登录# 修改 OpenSSH 服务端配置：
 复制sudo sed -i &amp;#39;s/^#\?PermitRootLogin.*/PermitRootLogin yes/g&amp;#39; /etc/ssh/sshd_config sudo sed -i &amp;#39;s/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g&amp;#39; /etc/ssh/sshd_config 这两行分别表示：
 PermitRootLogin yes：允许 root 通过 SSH 登录。 PasswordAuthentication yes：允许使用密码认证。 如果原配置文件里没有这两个字段，可以手动追加：</description></item><item><title>Docker 数据打包上传到 Syncthing 源目录的备份脚本</title><link>https://purodn.eu.org/posts/linux/docker-data-backup-upload-syncthing-script/</link><pubDate>Sun, 24 May 2026 23:11:04 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/docker-data-backup-upload-syncthing-script/</guid><description>这篇记录一个很实用的小脚本：在业务服务器上把 Docker 数据目录打包成 tar.gz，通过 SSH 上传到另一台服务器的 /srv/backup，再由那台服务器上的 Syncthing 继续同步到备份端。
 这个方案适合下面这种链路：
 复制业务服务器 A -&amp;gt; SSH 上传 -&amp;gt; Syncthing 源端 B:/srv/backup -&amp;gt; Syncthing 同步 -&amp;gt; 备份端 C:/srv/backup 脚本本身只负责“打包”和“上传”。真正的多端同步、断点传输、设备连接状态和备份端落盘，由 Syncthing 继续处理。
-为什么要这样写 直接把备份文件 scp 到 /srv/backup 也能用，但有两个细节容易踩坑。
+为什么要这样写# 直接把备份文件 scp 到 /srv/backup 也能用，但有两个细节容易踩坑。
 第一，上传大文件时，Syncthing 可能看到一个还没有传完的半截文件。更稳妥的方式是先上传到远端临时目录，传完后再 mv 到 /srv/backup。同一文件系统内的 mv 基本是原子操作，Syncthing 看到的是最终文件。
 第二，Syncthing 现在以普通 syncthing 用户运行。远端文件最好统一成：
 复制syncthing:syncthing 0644 这样 Syncthing 后续读取、索引、同步都更稳。文件如果是 root:root 且权限为 0644，通常也能读；但如果脚本或系统 umask 让文件变成 0600，Syncthing 就读不到了。
-前提条件 这篇假设远端服务器已经按下面方式准备好 Syncthing 源目录：
+前提条件# 这篇假设远端服务器已经按下面方式准备好 Syncthing 源目录：
 复制install -d -o syncthing -g syncthing /srv/backup 远端 Syncthing 服务以 syncthing 用户运行，并且文件夹路径配置为：</description></item><item><title>FreeBSD 安装 trzsz-go 并放到 /usr/local/bin</title><link>https://purodn.eu.org/posts/freebsd/freebsd-install-trzsz-go/</link><pubDate>Sun, 24 May 2026 19:12:00 +0800</pubDate><guid>https://purodn.eu.org/posts/freebsd/freebsd-install-trzsz-go/</guid><description>trzsz-go 是一个命令行工具，不是普通 Go 库。安装时不能只写到仓库根目录，而是要安装它下面的命令入口：
 复制go install github.com/trzsz/trzsz-go/cmd/trz@latest go install github.com/trzsz/trzsz-go/cmd/tsz@latest 默认情况下，如果你以 root 用户执行上面两条命令，生成的二进制文件通常会放到：
 复制/root/go/bin/trz /root/go/bin/tsz 如果只是 root 自己使用，可以把 $HOME/go/bin 加入 PATH。但在 FreeBSD 上，更推荐把这种全局命令放到 /usr/local/bin，这样所有用户和脚本都更容易调用。
-准备 Go 环境 先确认 Go 已经可用：
+准备 Go 环境# 先确认 Go 已经可用：
 复制go version 如果还没有安装 Go，可以先参考本站的 FreeBSD Go 安装教程，或者确认你的系统里已经有 /usr/local/go/bin/go。
 如果当前终端还找不到 go，可以临时加入 PATH：
-复制export PATH=$PATH:/usr/local/go/bin 方案一：直接安装到 /usr/local/bin 可以。go install 支持通过 GOBIN 指定输出目录，所以最干净的方式是直接把 trz 和 tsz 安装到 /usr/local/bin。
+复制export PATH=$PATH:/usr/local/go/bin 方案一：直接安装到 /usr/local/bin# 可以。go install 支持通过 GOBIN 指定输出目录，所以最干净的方式是直接把 trz 和 tsz 安装到 /usr/local/bin。
 以 root 用户执行：
 复制env GOBIN=/usr/local/bin go install github.com/trzsz/trzsz-go/cmd/trz@latest env GOBIN=/usr/local/bin go install github.com/trzsz/trzsz-go/cmd/tsz@latest 确认文件已经生成：
 复制ls -l /usr/local/bin/trz /usr/local/bin/tsz 确认命令可用：</description></item><item><title>Alpine Linux 常用管理脚本备份：防火墙、SSL 证书与 SSH 密钥</title><link>https://purodn.eu.org/posts/linux/alpine-admin-scripts-backup/</link><pubDate>Mon, 18 May 2026 20:57:38 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/alpine-admin-scripts-backup/</guid><description>这里备份四份 Alpine Linux 下常用的管理脚本，方便以后迁移服务器、重装系统或临时排查时直接查阅。
 原始脚本也保存在本文同级 assets/ 目录中：
 Alpine_firewall.sh ssl_alpine.sh alpine_root_ssh_key_manage.sh alpine_user_ssh_key_manage.sh 这些脚本有的会修改系统防火墙、证书目录、SSH 配置和 root 用户密钥，也有的只管理当前普通用户自己的 SSH 公钥。实际执行前建议先完整阅读脚本内容，并确认当前 SSH 会话、开放端口、域名解析和系统服务状态。
-Alpine IPv4 防火墙脚本 这个脚本用于安装 iptables 与 OpenRC 服务组件，清空旧规则后设置默认入站丢弃策略，并放行 SSH、HTTP、HTTPS、8000、10521 等 TCP 端口，以及 UDP 443。
+Alpine IPv4 防火墙脚本# 这个脚本用于安装 iptables 与 OpenRC 服务组件，清空旧规则后设置默认入站丢弃策略，并放行 SSH、HTTP、HTTPS、8000、10521 等 TCP 端口，以及 UDP 443。
 复制#!/bin/sh # ============================================================ # Alpine Linux 严谨版防火墙脚本 (IPv4 专用) # 针对 sing-box 性能优化 &amp;amp; 安全加固 # ============================================================ set -e # 颜色输出 info=&amp;#39;\033[32m[INFO]\033[0m&amp;#39; warn=&amp;#39;\033[33m[WARN]\033[0m&amp;#39; echo -e &amp;#34;$info 安装 iptables 及其服务组件...&amp;#34; apk add --no-cache iptables iptables-openrc echo -e &amp;#34;$info 清空旧规则并预设安全策略.</description></item><item><title>Linux 下 tmux 基础配置：鼠标、状态栏、vi 复制与系统剪贴板</title><link>https://purodn.eu.org/posts/linux/tmux-basic-config/</link><pubDate>Mon, 18 May 2026 14:30:00 +0800</pubDate><guid>https://purodn.eu.org/posts/linux/tmux-basic-config/</guid><description>tmux 适合长期 SSH 到服务器、在一个终端里同时维护多个任务的场景。它可以把会话、窗口和面板留在远端，即使本地终端断开，重新登录后也能接着原来的工作现场继续。
 下面这份配置偏向日常使用：关闭 tmux 自己的鼠标接管，让外部终端继续负责鼠标选中复制；窗口和面板从 1 开始编号，状态栏保持简洁，复制模式使用 vi 键位，并尽量把复制内容同步到系统剪贴板。
-写入配置文件 编辑 ~/.tmux.conf：
+写入配置文件# 编辑 ~/.tmux.conf：
 复制nvim ~/.tmux.conf 如果没有安装 nvim，也可以使用 vim 或 nano。
 写入下面这份配置：
 复制# --- 基础设置 --- set -g mouse off set -g base-index 1 set -g pane-base-index 1 set -g renumber-windows on # --- 状态栏美化（通用无乱码版） --- set -g status-style &amp;#34;bg=#282c34,fg=#abb2bf&amp;#34; set -g status-left-length 30 set -g status-left &amp;#34;#[bg=#61afef,fg=#282c34,bold] #S #[bg=default,fg=#61afef] &amp;#34; # 1. 开启 vi 风格的复制模式 setw -g mode-keys vi # 2.</description></item><item><title>FreeBSD专用版拉取GitHub公钥作为服务器SSH公钥的脚本</title><link>https://purodn.eu.org/posts/freebsd/freebsd-github-ssh-keys-authorized-script/</link><pubDate>Sun, 01 Mar 2026 00:00:00 +0800</pubDate><guid>https://purodn.eu.org/posts/freebsd/freebsd-github-ssh-keys-authorized-script/</guid><description>这篇记录 FreeBSD 专用的 SSH 公钥导入脚本。脚本可以从 GitHub 用户主页拉取公开 SSH key，写入服务器的 authorized_keys，并自动调整 sshd_config 里的关键认证参数。
 它的用途很直接：新服务器装好以后，不用手动复制公钥、不用逐项改 SSH 配置，运行脚本后选择导入 GitHub 公钥，再检查一次配置即可。
-使用前提醒 这类脚本会修改 SSH 登录策略。执行前请先确认当前 SSH 连接稳定，并且不要立刻关闭当前终端窗口。
+使用前提醒# 这类脚本会修改 SSH 登录策略。执行前请先确认当前 SSH 连接稳定，并且不要立刻关闭当前终端窗口。
 更稳妥的做法是：脚本执行完成后，保持当前窗口不断开，再新开一个终端窗口测试登录。确认新窗口能正常用密钥登录以后，再退出旧连接。
 GitHub 公钥地址格式是：
 复制https://github.com/&amp;lt;你的GitHub用户名&amp;gt;.keys 如果还没有把自己的 SSH 公钥上传到 GitHub，需要先在 GitHub 账号设置里添加公钥。
-root 用户版本 如果你希望直接配置 root 用户的 SSH 密钥登录，可以在 FreeBSD root 环境下执行：
+root 用户版本# 如果你希望直接配置 root 用户的 SSH 密钥登录，可以在 FreeBSD root 环境下执行：
 复制fetch -o freebsd_ssh_key_manage.sh https://raw.githubusercontent.com/hanigege/scripts/main/freebsd_ssh_key_manage.sh &amp;amp;&amp;amp; chmod +x freebsd_ssh_key_manage.sh &amp;amp;&amp;amp; ./freebsd_ssh_key_manage.sh 这个版本配置的是 root 用户的 authorized_keys。脚本执行完成后，应重点核对 /etc/ssh/sshd_config 里的配置项。
-root 用户配置项核对 root 用户版本推荐状态如下：
+root 用户配置项核对# root 用户版本推荐状态如下：
 复制UsePAM no PermitRootLogin prohibit-password PasswordAuthentication no PubkeyAuthentication yes ChallengeResponseAuthentication no KbdInteractiveAuthentication no 这些配置的含义是：</description></item></channel></rss>

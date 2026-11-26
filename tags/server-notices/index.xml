@@ -5,5 +5,5 @@
 复制5MiB 以内文件长期保留 超过 5MiB 的文件，90 天后清理 超过 100MiB 的超大文件 7 天后清理 重要文件请自行保存 这里不是做“每次上传都实时提醒”。实时拦截上传需要额外模块或反代日志分析，复杂度更高。Server Notices 更适合做上线公告、规则变更通知和新用户补发。
 关于头像这条规则要先说清楚：清理脚本使用 keep_profiles=true，会尽量保留仍被用户头像、房间头像等 profile image 使用的媒体。通知里写“头像和房间头像建议不要超过 5MiB”，主要是为了减少客户端加载压力和长期存储负担。
 官方参考：
-Server Notices 配置说明：https://element-hq.github.io/synapse/latest/server_notices.html Server Notices Admin API：https://element-hq.github.io/synapse/latest/admin_api/server_notices.html 一、准备信息 下面示例统一使用这些占位值：
+Server Notices 配置说明：https://element-hq.github.io/synapse/latest/server_notices.html Server Notices Admin API：https://element-hq.github.io/synapse/latest/admin_api/server_notices.html 一、准备信息# 下面示例统一使用这些占位值：
 复制Matrix server_name: 666666.xyz Synapse 本机地址: http://127.0.0.1:8008 管理员 token 文件: /root/.config/synapse-admin/access_token Server Notices 系统账号: @server:666666.</description></item></channel></rss>

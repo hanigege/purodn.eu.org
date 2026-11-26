@@ -2,11 +2,11 @@
 复制~/.hermes/config.yaml 多 profile 场景下，每个 profile 也会有自己的配置：
 复制~/.hermes/profiles/&amp;lt;profile&amp;gt;/config.yaml 这篇按官方 cli-config.yaml.example 和官方配置参考整理，查询时间是 2026-05-30。Hermes 仍在快速迭代，字段可能随版本变化。生产环境不要追求“字段越多越好”，只保留自己理解且确实需要的配置。
 参考资料：
-Hermes Agent Configuration Options Hermes Agent Configuration 官方 cli-config.yaml.example 修改前先备份 先切到运行 Hermes 的用户，例如：
+Hermes Agent Configuration Options Hermes Agent Configuration 官方 cli-config.yaml.example 修改前先备份# 先切到运行 Hermes 的用户，例如：
 复制sudo su - hermesuser 备份配置：
 复制HERMES_HOME=&amp;#34;${HOME}/.hermes&amp;#34; CONFIG=&amp;#34;${HERMES_HOME}/config.yaml&amp;#34; cp &amp;#34;$CONFIG&amp;#34; &amp;#34;${CONFIG}.bak.$(date +%Y%m%d-%H%M%S)&amp;#34; 编辑配置：
 复制nvim &amp;#34;$CONFIG&amp;#34; 如果系统没有 nvim：
 复制nano &amp;#34;$CONFIG&amp;#34; 改完先检查 Hermes：
 复制hermes doctor 如果修改了 Gateway、Telegram、工具显示、模型或平台参数，重启对应服务：
 复制systemctl --user restart hermes-gateway.service systemctl --user status hermes-gateway.service --no-pager 多 profile 先看服务名：
-复制systemctl --user list-units &amp;#39;hermes*&amp;#39; --no-pager 总体结构 官方示例配置的主干大致如下：</description></item></channel></rss>
+复制systemctl --user list-units &amp;#39;hermes*&amp;#39; --no-pager 总体结构# 官方示例配置的主干大致如下：</description></item></channel></rss>

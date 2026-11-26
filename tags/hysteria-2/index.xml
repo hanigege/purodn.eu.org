@@ -3,8 +3,8 @@
 具体的 sysctl、UDP 缓冲、GSO/GRO、PVE 宿主机接口、Alpine BusyBox sysctl、OpenRC 限制和实际验证，统一看主文：
 PVE LXC sing-box 网关 sysctl 与 UDP 性能优化
 这篇不再重复具体配置，避免两篇文章参数互相打架。
-一、先判断 sing-box 的角色 最简单的判断标准：
+一、先判断 sing-box 的角色# 最简单的判断标准：
 复制客户端默认网关 = Alpine LXC 的 IP -&amp;gt; 网关模式 客户端默认网关 = 主路由的 IP -&amp;gt; TProxy + FakeIP 入口模式 这里的“客户端”可以是手机、电脑、电视、游戏机，也可以是某个 VLAN 或子网里的设备。
-二、模式一：Alpine LXC 是旁路网关 如果第三方设备的默认网关直接指向 Alpine LXC，或者主路由上有静态路由把某些网段交给这台 LXC 转发，那么它就是网关模式。
+二、模式一：Alpine LXC 是旁路网关# 如果第三方设备的默认网关直接指向 Alpine LXC，或者主路由上有静态路由把某些网段交给这台 LXC 转发，那么它就是网关模式。
 典型链路：
 复制客户端 | | 默认网关 = Alpine LXC IP v Alpine LXC sing-box | | 转发 / TProxy / 代理出站 v 主路由 / PVE 网桥 / 上游网络 网关模式下，Alpine LXC 至少要满足：</description></item></channel></rss>
