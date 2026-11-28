@@ -104,15 +104,28 @@
         return;
       }
       status.textContent = "找到 " + search.results.length + " 篇与“" + query + "”相关的文章。";
-      const fragment = document.createDocumentFragment();
-      for (const result of search.results.slice(0, 50)) {
-        const data = await result.data();
-        fragment.appendChild(buildCard(data));
-      }
+      const all = search.results.slice(0, 50);
+      const FIRST_BATCH = 12;
+      const firstData = await Promise.all(all.slice(0, FIRST_BATCH).map(function (r) { return r.data(); }));
       if (token !== runToken) {
         return;
       }
+      const fragment = document.createDocumentFragment();
+      for (const data of firstData) {
+        fragment.appendChild(buildCard(data));
+      }
       results.appendChild(fragment);
+      if (all.length > FIRST_BATCH) {
+        const restData = await Promise.all(all.slice(FIRST_BATCH).map(function (r) { return r.data(); }));
+        if (token !== runToken) {
+          return;
+        }
+        const rest = document.createDocumentFragment();
+        for (const data of restData) {
+          rest.appendChild(buildCard(data));
+        }
+        results.appendChild(rest);
+      }
     }
 
     let debounce = null;
@@ -136,6 +149,7 @@
       runSearch(input.value);
     });
 
+    ensureLoaded();
     if (initialQuery) {
       runSearch(initialQuery);
     }
